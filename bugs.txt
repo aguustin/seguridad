@@ -1,0 +1,14 @@
+diseño:
+ - la estadisticas, finanzas, envio de alertas y el chat de clientes y guardias tienen fondo blanco
+
+funcionalidades:
+ - Al ingresar como cliente y entrar el chat al enviar mensajes aparece con el nombre "seguridad" y deberia aparecer el nombre del cliente (name)
+
+ - Chequear si los guardias pueden hablar con el cliente o solo con sus compañeros, de ser asi entonces crear otra seccion para el chat entre los clientes y los guardias del barrio al que pertenecen
+
+ - En el chat del guardia al escribir un mensaje desaparece el boton para enviarlo y al darle en donde deberia encontrarse el boton el mensaje desaparece pero al salir y volver a entrar al chat se ve el mensaje, corregir eso. Tambien aparece como "Administrador" cuando el guardia envia un mensaje. Tiene que aparecer su firsName y LastName
+
+ - Chequear si en la seccion finanzas el registro de ingresos y gastos funciona correctamente
+
+ - En el historial dentro del perfil de guardia este solo deberia ver su historial de entrada y salida. Verificar que no ve el historial de los demas guardias
+ 

@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(node -e \"const { createCanvas, loadImage } = require\\('@napi-rs/canvas'\\); console.log\\('canvas OK:', typeof createCanvas\\)\")",
+      "Bash(node -e \"require\\('./src/app'\\); console.log\\('app.js OK'\\)\")",
+      "Bash(node -e \"require\\('./src/app'\\); console.log\\('app.js cargado OK'\\)\")",
+      "Bash(node -e \"require\\('./src/app'\\); console.log\\('app OK'\\)\")",
+      "Bash(node -e \"const c = require\\('@napi-rs/canvas'\\); const fapi = require\\('@vladmandic/face-api'\\); console.log\\('canvas:', typeof c.createCanvas, '| face-api:', typeof fapi.nets\\)\")",
+      "Bash(node -e \"require\\('@tensorflow/tfjs-node'\\); const fapi = require\\('@vladmandic/face-api'\\); const c = require\\('@napi-rs/canvas'\\); console.log\\('OK - canvas:', typeof c.createCanvas, '| face-api nets:', typeof fapi.nets\\)\")",
+      "Bash(npm uninstall:*)",
+      "Bash(ls /c/seguridad/backend/node_modules/@vladmandic/face-api/dist/*.js)",
+      "Bash(node -e ':*)",
+      "Bash(node -e \"require\\('./src/app'\\); console.log\\('Backend listo'\\)\")",
+      "Bash(npx expo:*)",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/expo-font/package.json'\\).version\\)\")",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/@expo/vector-icons/package.json'\\).version\\)\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/auth/admin/register -H 'Content-Type: application/json' -d '{\"username\":\"admin\",\"password\":\"Admin123!\",\"name\":\"Administrador Principal\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/api/auth/admin/login -H 'Content-Type: application/json' -d '{\"username\":\"admin\",\"password\":\"Admin123!\"}')",
+      "Bash(ipconfig)",
+      "Bash(grep -v \"^--$\")",
+      "Bash(node -e \"const j = require\\('./app.json'\\); console.log\\(JSON.stringify\\(j.expo.plugins, null, 2\\)\\)\")",
+      "Bash(node --input-type=module)",
+      "Bash(node -e \"const c = require\\('@napi-rs/canvas'\\); const {loadImage} = c; console.log\\(Object.keys\\(c\\)\\)\")",
+      "Bash(node -e \"const c = require\\('@napi-rs/canvas'\\); console.log\\(Object.keys\\(c\\)\\)\")"
+    ],
+    "additionalDirectories": [
+      "C:\\seguridad\\mobile"
+    ]
+  }
+}

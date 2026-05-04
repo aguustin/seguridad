@@ -6,10 +6,10 @@ import { getFinancialStats } from '../../services/api';
 import { COLORS } from '../../config/constants';
 
 const PERIODS = [
-  { value: 'day', label: 'Hoy' },
-  { value: 'week', label: 'Semana' },
+  { value: 'day',   label: 'Hoy' },
+  { value: 'week',  label: 'Semana' },
   { value: 'month', label: 'Mes' },
-  { value: 'year', label: 'Año' },
+  { value: 'year',  label: 'Año' },
   { value: 'total', label: 'Total' },
 ];
 
@@ -54,7 +54,7 @@ export default function StatisticsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Period selector */}
+      {/* Selector de período */}
       <View style={styles.periodRow}>
         {PERIODS.map((p) => (
           <TouchableOpacity
@@ -73,7 +73,7 @@ export default function StatisticsScreen() {
         <ActivityIndicator size="large" color={COLORS.accent} style={{ marginTop: 40 }} />
       ) : stats ? (
         <>
-          {/* Summary cards */}
+          {/* Cards resumen */}
           <View style={styles.cardsRow}>
             <View style={[styles.card, { borderTopColor: COLORS.success }]}>
               <Text style={styles.cardLabel}>Ingresos</Text>
@@ -89,7 +89,10 @@ export default function StatisticsScreen() {
             </View>
           </View>
 
-          <View style={[styles.balanceCard, { backgroundColor: stats.balance >= 0 ? '#d4edda' : '#fde8e8' }]}>
+          <View style={[
+            styles.balanceCard,
+            { backgroundColor: stats.balance >= 0 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)' },
+          ]}>
             <Text style={styles.balanceLabel}>Balance</Text>
             <Text style={[styles.balanceAmount, { color: stats.balance >= 0 ? COLORS.success : COLORS.danger }]}>
               {stats.balance >= 0 ? '+' : ''}${stats.balance.toLocaleString('es-AR')}
@@ -105,11 +108,11 @@ export default function StatisticsScreen() {
                 width={screenWidth - 40}
                 height={220}
                 chartConfig={{
-                  backgroundGradientFrom: COLORS.white,
-                  backgroundGradientTo: COLORS.white,
+                  backgroundGradientFrom: COLORS.surface,
+                  backgroundGradientTo:   COLORS.surface,
                   decimalPlaces: 0,
-                  color: (opacity = 1) => `rgba(15, 52, 96, ${opacity})`,
-                  labelColor: () => COLORS.gray,
+                  color: (opacity = 1) => `rgba(252,211,77,${opacity})`,
+                  labelColor: () => 'rgba(255,255,255,0.45)',
                 }}
                 style={{ borderRadius: 12 }}
                 withCustomBarColorFromData
@@ -118,7 +121,7 @@ export default function StatisticsScreen() {
             </View>
           )}
 
-          {/* Detalle por categoría */}
+          {/* Detalle de registros */}
           <Text style={styles.sectionTitle}>Detalle por registro</Text>
           {stats.records.slice(0, 15).map((r) => (
             <View key={r.id} style={styles.recordRow}>
@@ -135,27 +138,31 @@ export default function StatisticsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  content: { padding: 20, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: COLORS.primaryDark },
+  content:   { padding: 20, paddingBottom: 40 },
+
   periodRow: { flexDirection: 'row', gap: 8, marginBottom: 20, flexWrap: 'wrap' },
-  periodChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: COLORS.white, borderWidth: 1.5, borderColor: '#e0e0e0' },
-  periodChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  periodText: { fontSize: 13, fontWeight: '500', color: COLORS.gray },
-  periodTextActive: { color: COLORS.white },
+  periodChip: {
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    backgroundColor: COLORS.surface, borderWidth: 1.5, borderColor: COLORS.surfaceBorder,
+  },
+  periodChipActive: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
+  periodText:       { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.55)' },
+  periodTextActive: { color: COLORS.primary, fontWeight: '700' },
+
   cardsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   card: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderRadius: 12,
     padding: 16,
     borderTopWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
   },
-  cardLabel: { fontSize: 13, color: COLORS.gray, marginBottom: 6 },
+  cardLabel:  { fontSize: 13, color: 'rgba(255,255,255,0.45)', marginBottom: 6 },
   cardAmount: { fontSize: 22, fontWeight: '800' },
+
   balanceCard: {
     borderRadius: 12,
     padding: 16,
@@ -163,20 +170,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
   },
-  balanceLabel: { fontSize: 16, fontWeight: '700', color: COLORS.darkGray },
+  balanceLabel:  { fontSize: 16, fontWeight: '700', color: COLORS.white },
   balanceAmount: { fontSize: 24, fontWeight: '800' },
-  chartWrapper: { backgroundColor: COLORS.white, borderRadius: 12, padding: 16, marginBottom: 20 },
-  chartTitle: { fontSize: 15, fontWeight: '700', color: COLORS.darkGray, marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.darkGray, marginBottom: 12 },
+
+  chartWrapper: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 12, padding: 16, marginBottom: 20,
+    borderWidth: 1, borderColor: COLORS.surfaceBorder,
+  },
+  chartTitle: { fontSize: 15, fontWeight: '700', color: COLORS.white, marginBottom: 12 },
+
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: COLORS.white, marginBottom: 12 },
   recordRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderRadius: 10,
     padding: 12,
     marginBottom: 6,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
   },
-  recordDesc: { flex: 1, fontSize: 13, color: COLORS.darkGray, marginRight: 12 },
-  recordAmt: { fontSize: 13, fontWeight: '700' },
+  recordDesc: { flex: 1, fontSize: 13, color: COLORS.white, marginRight: 12 },
+  recordAmt:  { fontSize: 13, fontWeight: '700' },
 });

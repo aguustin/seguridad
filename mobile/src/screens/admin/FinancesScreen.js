@@ -12,10 +12,10 @@ import Button from '../../components/Button';
 import { COLORS } from '../../config/constants';
 
 const FREQUENCIES = [
-  { value: 'unique', label: 'Único' },
-  { value: 'monthly', label: 'Mensual' },
-  { value: 'annual', label: 'Anual' },
-  { value: 'biweekly', label: 'Quincenal' },
+  { value: 'unique',    label: 'Único' },
+  { value: 'monthly',   label: 'Mensual' },
+  { value: 'annual',    label: 'Anual' },
+  { value: 'biweekly',  label: 'Quincenal' },
 ];
 
 export default function FinancesScreen({ navigation }) {
@@ -123,7 +123,7 @@ export default function FinancesScreen({ navigation }) {
           style={styles.statsBtn}
           onPress={() => navigation.navigate('Statistics')}
         >
-          <Ionicons name="bar-chart-outline" size={18} color={COLORS.accentBlue} />
+          <Ionicons name="bar-chart-outline" size={18} color={COLORS.info} />
         </TouchableOpacity>
       </View>
 
@@ -134,7 +134,10 @@ export default function FinancesScreen({ navigation }) {
         ListEmptyComponent={<Text style={styles.empty}>Sin registros</Text>}
         renderItem={({ item }) => (
           <View style={styles.record}>
-            <View style={[styles.recordIcon, { backgroundColor: item.type === 'income' ? '#d4edda' : '#fde8e8' }]}>
+            <View style={[
+              styles.recordIcon,
+              { backgroundColor: item.type === 'income' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)' },
+            ]}>
               <Ionicons
                 name={item.type === 'income' ? 'trending-up' : 'trending-down'}
                 size={20}
@@ -153,7 +156,7 @@ export default function FinancesScreen({ navigation }) {
                 {item.type === 'income' ? '+' : '-'}${parseFloat(item.amount).toLocaleString('es-AR')}
               </Text>
               <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                <Ionicons name="trash-outline" size={16} color={COLORS.gray} />
+                <Ionicons name="trash-outline" size={16} color="rgba(255,255,255,0.3)" />
               </TouchableOpacity>
             </View>
           </View>
@@ -161,7 +164,7 @@ export default function FinancesScreen({ navigation }) {
       />
 
       <TouchableOpacity style={styles.fab} onPress={() => setShowModal(true)}>
-        <Ionicons name="add" size={28} color={COLORS.white} />
+        <Ionicons name="add" size={28} color={COLORS.primary} />
       </TouchableOpacity>
 
       {/* Modal nuevo registro */}
@@ -171,7 +174,7 @@ export default function FinancesScreen({ navigation }) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Nuevo registro</Text>
               <TouchableOpacity onPress={() => setShowModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.darkGray} />
+                <Ionicons name="close" size={24} color="rgba(255,255,255,0.5)" />
               </TouchableOpacity>
             </View>
 
@@ -191,10 +194,10 @@ export default function FinancesScreen({ navigation }) {
                 ))}
               </View>
 
-              <Input label="Descripción" value={form.description} onChangeText={set('description')} placeholder="Descripción del registro" />
-              <Input label="Categoría (opcional)" value={form.category} onChangeText={set('category')} placeholder="Ej: Salarios, Equipamiento" />
-              <Input label="Importe ($)" value={form.amount} onChangeText={set('amount')} keyboardType="decimal-pad" placeholder="0.00" />
-              <Input label="Fecha inicio" value={form.startDate} onChangeText={set('startDate')} placeholder="YYYY-MM-DD" />
+              <Input dark label="Descripción" value={form.description} onChangeText={set('description')} placeholder="Descripción del registro" />
+              <Input dark label="Categoría (opcional)" value={form.category} onChangeText={set('category')} placeholder="Ej: Salarios, Equipamiento" />
+              <Input dark label="Importe ($)" value={form.amount} onChangeText={set('amount')} keyboardType="decimal-pad" placeholder="0.00" />
+              <Input dark label="Fecha inicio" value={form.startDate} onChangeText={set('startDate')} placeholder="YYYY-MM-DD" />
 
               {/* Frecuencia */}
               <Text style={styles.freqLabel}>Frecuencia</Text>
@@ -222,87 +225,101 @@ export default function FinancesScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: COLORS.primaryDark },
+
   summary: {
     flexDirection: 'row',
     backgroundColor: COLORS.primary,
     padding: 20,
     paddingTop: 16,
   },
-  summaryCard: { flex: 1, alignItems: 'center' },
-  summaryDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
-  summaryLabel: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 4 },
+  summaryCard:   { flex: 1, alignItems: 'center' },
+  summaryDivider:{ width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
+  summaryLabel:  { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginBottom: 4 },
   summaryAmount: { fontSize: 16, fontWeight: '800' },
+
   filters: {
     flexDirection: 'row',
     padding: 12,
     gap: 8,
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: COLORS.surfaceBorder,
   },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f0f0f0' },
-  filterChipActive: { backgroundColor: COLORS.primary },
-  filterText: { fontSize: 13, color: COLORS.gray },
-  filterTextActive: { color: COLORS.white, fontWeight: '600' },
-  statsBtn: { marginLeft: 'auto', padding: 6 },
-  list: { padding: 16, paddingBottom: 80 },
-  empty: { textAlign: 'center', color: COLORS.gray, marginTop: 40 },
+  filterChip:       { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: COLORS.primaryLight },
+  filterChipActive: { backgroundColor: COLORS.accent },
+  filterText:       { fontSize: 13, color: 'rgba(255,255,255,0.55)' },
+  filterTextActive: { color: COLORS.primary, fontWeight: '700' },
+  statsBtn:         { marginLeft: 'auto', padding: 6 },
+
+  list:  { padding: 16, paddingBottom: 80 },
+  empty: { textAlign: 'center', color: 'rgba(255,255,255,0.3)', marginTop: 40 },
+
   record: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderRadius: 12,
     padding: 14,
     marginBottom: 8,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
   },
-  recordIcon: { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
-  recordInfo: { flex: 1 },
-  recordDesc: { fontSize: 14, fontWeight: '600', color: COLORS.darkGray },
-  recordMeta: { fontSize: 12, color: COLORS.gray, marginTop: 2 },
-  recordRight: { alignItems: 'flex-end', gap: 4 },
+  recordIcon:   { width: 42, height: 42, borderRadius: 21, justifyContent: 'center', alignItems: 'center' },
+  recordInfo:   { flex: 1 },
+  recordDesc:   { fontSize: 14, fontWeight: '600', color: COLORS.white },
+  recordMeta:   { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
+  recordRight:  { alignItems: 'flex-end', gap: 4 },
   recordAmount: { fontSize: 14, fontWeight: '700' },
+
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
+    bottom: 24, right: 24,
+    width: 56, height: 56,
     borderRadius: 28,
     backgroundColor: COLORS.accent,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: COLORS.accent,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     elevation: 8,
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
   modal: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 36,
     maxHeight: '90%',
+    borderTopWidth: 1,
+    borderColor: COLORS.surfaceBorder,
   },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: COLORS.darkGray },
-  typeToggle: { flexDirection: 'row', marginBottom: 16, borderRadius: 10, overflow: 'hidden', borderWidth: 1.5, borderColor: '#e0e0e0' },
-  typeBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: '#f8f9fa' },
-  typeBtnIncome: { backgroundColor: COLORS.success },
-  typeBtnExpense: { backgroundColor: COLORS.danger },
-  typeBtnText: { fontSize: 14, fontWeight: '600', color: COLORS.gray },
-  typeBtnTextActive: { color: COLORS.white },
-  freqLabel: { fontSize: 13, fontWeight: '600', color: COLORS.darkGray, marginBottom: 8 },
-  freqRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  freqChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: '#f0f0f0', borderWidth: 1.5, borderColor: '#e0e0e0' },
-  freqChipActive: { backgroundColor: COLORS.accentBlue, borderColor: COLORS.accentBlue },
-  freqText: { fontSize: 13, color: COLORS.gray },
-  freqTextActive: { color: COLORS.white, fontWeight: '600' },
+  modalTitle:  { fontSize: 18, fontWeight: '700', color: COLORS.white },
+
+  typeToggle: {
+    flexDirection: 'row', marginBottom: 16,
+    borderRadius: 10, overflow: 'hidden',
+    borderWidth: 1.5, borderColor: COLORS.surfaceBorder,
+  },
+  typeBtn:         { flex: 1, paddingVertical: 10, alignItems: 'center', backgroundColor: COLORS.primaryLight },
+  typeBtnIncome:   { backgroundColor: COLORS.success },
+  typeBtnExpense:  { backgroundColor: COLORS.danger },
+  typeBtnText:     { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.55)' },
+  typeBtnTextActive: { color: COLORS.white, fontWeight: '700' },
+
+  freqLabel: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.55)', marginBottom: 8 },
+  freqRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  freqChip: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: COLORS.primaryLight, borderWidth: 1.5, borderColor: COLORS.surfaceBorder,
+  },
+  freqChipActive: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
+  freqText:       { fontSize: 13, color: 'rgba(255,255,255,0.55)' },
+  freqTextActive: { color: COLORS.primary, fontWeight: '700' },
 });

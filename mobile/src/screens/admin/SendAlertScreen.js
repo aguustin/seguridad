@@ -73,8 +73,9 @@ export default function SendAlertScreen({ navigation }) {
         <Text style={styles.bannerText}>Los guardias recibirán una notificación sonora</Text>
       </View>
 
-      <Input label="Título de la alerta" value={title} onChangeText={setTitle} placeholder="Ej: Atención guardia" />
+      <Input dark label="Título de la alerta" value={title} onChangeText={setTitle} placeholder="Ej: Atención guardia" />
       <Input
+        dark
         label="Mensaje"
         value={message}
         onChangeText={setMessage}
@@ -114,7 +115,7 @@ export default function SendAlertScreen({ navigation }) {
           <Ionicons
             name={targetSecurityId === s.id ? 'radio-button-on' : 'radio-button-off'}
             size={20}
-            color={targetSecurityId === s.id ? COLORS.accent : COLORS.gray}
+            color={targetSecurityId === s.id ? COLORS.accent : 'rgba(255,255,255,0.3)'}
           />
           <Text style={styles.guardName}>{s.firstName} {s.lastName}</Text>
           {s.neighborhood && (
@@ -134,7 +135,7 @@ export default function SendAlertScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: COLORS.primaryDark },
   content: { padding: 20, paddingBottom: 40 },
   banner: {
     backgroundColor: COLORS.danger,
@@ -145,28 +146,31 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 20,
   },
-  bannerText: { color: COLORS.white, fontWeight: '600', flex: 1 },
-  sectionLabel: { fontSize: 15, fontWeight: '700', color: COLORS.darkGray, marginTop: 8 },
-  hint: { fontSize: 12, color: COLORS.gray, marginBottom: 12, marginTop: 2 },
-  subLabel: { fontSize: 13, fontWeight: '600', color: COLORS.gray, marginBottom: 8, marginTop: 10 },
-  chipRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
-  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: COLORS.white, borderWidth: 1.5, borderColor: '#e0e0e0' },
-  chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { fontSize: 13, color: COLORS.gray },
-  chipTextActive: { color: COLORS.white },
+  bannerText:       { color: COLORS.white, fontWeight: '600', flex: 1 },
+  sectionLabel:     { fontSize: 15, fontWeight: '700', color: COLORS.white, marginTop: 8 },
+  hint:             { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 12, marginTop: 2 },
+  subLabel:         { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.45)', marginBottom: 8, marginTop: 10 },
+  chipRow:          { flexDirection: 'row', gap: 8, paddingBottom: 4 },
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: COLORS.surface, borderWidth: 1.5, borderColor: COLORS.surfaceBorder,
+  },
+  chipActive:       { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
+  chipText:         { fontSize: 13, color: 'rgba(255,255,255,0.55)' },
+  chipTextActive:   { color: COLORS.primary, fontWeight: '700' },
   guardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderRadius: 10,
     padding: 12,
     marginBottom: 6,
     gap: 10,
     borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderColor: COLORS.surfaceBorder,
   },
-  guardRowActive: { borderColor: COLORS.accent, backgroundColor: '#fff5f5' },
-  guardName: { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.darkGray },
-  guardNeighborhood: { fontSize: 12, color: COLORS.gray },
+  guardRowActive:      { borderColor: COLORS.accent, backgroundColor: 'rgba(252,211,77,0.08)' },
+  guardName:           { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.white },
+  guardNeighborhood:   { fontSize: 12, color: 'rgba(255,255,255,0.45)' },
   btn: { marginTop: 20 },
 });

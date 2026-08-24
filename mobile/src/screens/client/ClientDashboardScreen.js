@@ -16,10 +16,7 @@ export default function ClientDashboardScreen({ navigation }) {
   const [locationSharing, setLocationSharing] = useState(false);
   const [refreshing, setRefreshing]         = useState(false);
 
-  // Watcher de posición — ref para no crear múltiples watchers
-  const watcherRef = useRef(null);
-  // Durante la carga inicial del perfil el Switch NO debe reaccionar al cambio
-  // de valor (bug de Android: onValueChange se dispara aunque sea programático)
+  const watcherRef  = useRef(null);
   const blockToggle = useRef(true);
 
   useEffect(() => {
@@ -32,22 +29,17 @@ export default function ClientDashboardScreen({ navigation }) {
     try {
       const { data } = await getClientProfile();
       setProfile(data);
-
-      if (data.locationSharingEnabled) {
-        await startWatcher();
-      }
+      if (data.locationSharingEnabled) await startWatcher();
       setLocationSharing(data.locationSharingEnabled);
     } catch {}
     finally {
       setRefreshing(false);
-      // Permitir toggles manuales recién después del próximo frame
-      // (cuando el Switch ya renderizó con el valor correcto)
       requestAnimationFrame(() => { blockToggle.current = false; });
     }
   }
 
   async function startWatcher() {
-    if (watcherRef.current) return;           // ya activo
+    if (watcherRef.current) return;
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return;
     watcherRef.current = await Location.watchPositionAsync(
@@ -62,7 +54,7 @@ export default function ClientDashboardScreen({ navigation }) {
   }
 
   async function handleToggleLocation(val) {
-    if (blockToggle.current) return;   // ignorar cambios programáticos
+    if (blockToggle.current) return;
     setLocationSharing(val);
     try {
       await toggleLocationSharing(val);
@@ -133,7 +125,7 @@ export default function ClientDashboardScreen({ navigation }) {
             <Ionicons
               name={locationSharing ? 'location' : 'location-outline'}
               size={20}
-              color={locationSharing ? COLORS.primary : COLORS.textSecondary}
+              color={locationSharing ? COLORS.primary : 'rgba(255,255,255,0.45)'}
             />
           </View>
           <View>
@@ -146,7 +138,7 @@ export default function ClientDashboardScreen({ navigation }) {
         <Switch
           value={locationSharing}
           onValueChange={handleToggleLocation}
-          trackColor={{ false: COLORS.border, true: COLORS.accent }}
+          trackColor={{ false: COLORS.surfaceBorder, true: COLORS.accent }}
           thumbColor={locationSharing ? COLORS.primary : COLORS.white}
         />
       </View>
@@ -159,7 +151,7 @@ export default function ClientDashboardScreen({ navigation }) {
             style={styles.actionCard}
             onPress={() => navigation.navigate('ClientChat')}
           >
-            <View style={[styles.actionIcon, { backgroundColor: COLORS.infoLight }]}>
+            <View style={[styles.actionIcon, { backgroundColor: 'rgba(59,130,246,0.15)' }]}>
               <Ionicons name="chatbubbles-outline" size={26} color={COLORS.info} />
             </View>
             <Text style={styles.actionLabel}>Chat con seguridad</Text>
@@ -169,7 +161,7 @@ export default function ClientDashboardScreen({ navigation }) {
             style={styles.actionCard}
             onPress={() => navigation.navigate('ClientEmergency')}
           >
-            <View style={[styles.actionIcon, { backgroundColor: COLORS.dangerLight }]}>
+            <View style={[styles.actionIcon, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
               <Ionicons name="alert-circle-outline" size={26} color={COLORS.danger} />
             </View>
             <Text style={styles.actionLabel}>Alerta de emergencia</Text>
@@ -182,7 +174,7 @@ export default function ClientDashboardScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: COLORS.primaryDark },
   header: {
     backgroundColor: COLORS.primary, padding: 20, paddingTop: 54,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
@@ -212,29 +204,25 @@ const styles = StyleSheet.create({
   emergencySub:   { fontSize: 12, color: 'rgba(0,0,0,0.6)', marginTop: 3 },
 
   locationCard: {
-    backgroundColor: COLORS.cardBg, borderRadius: 14, padding: 16,
+    backgroundColor: COLORS.surface, borderRadius: 14, padding: 16,
     marginHorizontal: 16, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between',
-    borderWidth: 1, borderColor: COLORS.border,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+    borderWidth: 1, borderColor: COLORS.surfaceBorder,
   },
   locationLeft:       { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  locationIcon:       { width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' },
+  locationIcon:       { width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center' },
   locationIconActive: { backgroundColor: COLORS.accent },
-  locationTitle:      { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
-  locationSub:        { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+  locationTitle:      { fontSize: 15, fontWeight: '700', color: COLORS.white },
+  locationSub:        { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
 
   actionsSection: { padding: 16, paddingTop: 20 },
-  sectionTitle:   { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 },
+  sectionTitle:   { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.45)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 },
   actionsGrid:    { gap: 10 },
   actionCard: {
-    backgroundColor: COLORS.cardBg, borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: COLORS.border,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+    backgroundColor: COLORS.surface, borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: COLORS.surfaceBorder,
   },
   actionIcon:  { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-  actionLabel: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
-  actionDesc:  { fontSize: 12, color: COLORS.textSecondary, marginTop: 4 },
+  actionLabel: { fontSize: 15, fontWeight: '700', color: COLORS.white },
+  actionDesc:  { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 4 },
 });

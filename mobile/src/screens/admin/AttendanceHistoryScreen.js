@@ -13,9 +13,7 @@ function formatDate(dateStr) {
 function calcDuration(checkIn, checkOut) {
   if (!checkIn || !checkOut) return null;
   const mins = Math.round((new Date(checkOut) - new Date(checkIn)) / 60000);
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h}h ${m}m`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
 export default function AttendanceHistoryScreen({ route }) {
@@ -36,11 +34,8 @@ export default function AttendanceHistoryScreen({ route }) {
     setLoading(true);
     try {
       const { data } = await getAttendanceHistory(staffId, { limit: PAGE_SIZE, offset });
-      if (reset) {
-        setRecords(data.rows);
-      } else {
-        setRecords((prev) => [...prev, ...data.rows]);
-      }
+      if (reset) setRecords(data.rows);
+      else setRecords((prev) => [...prev, ...data.rows]);
       setTotal(data.count);
       setPage(offset / PAGE_SIZE);
     } catch (err) {
@@ -103,7 +98,13 @@ export default function AttendanceHistoryScreen({ route }) {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadRecords(0, true); }} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); loadRecords(0, true); }}
+            tintColor={COLORS.accent}
+          />
+        }
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
         ListEmptyComponent={<Text style={styles.empty}>Sin registros de asistencia</Text>}
@@ -113,35 +114,35 @@ export default function AttendanceHistoryScreen({ route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: COLORS.primaryDark },
   header: {
     backgroundColor: COLORS.primary,
     padding: 20,
     paddingTop: 16,
   },
-  name: { fontSize: 18, fontWeight: '700', color: COLORS.white },
+  name:      { fontSize: 18, fontWeight: '700', color: COLORS.white },
   totalText: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 4 },
-  list: { padding: 16, paddingBottom: 40 },
-  empty: { textAlign: 'center', color: COLORS.gray, marginTop: 40 },
-  record: { flexDirection: 'row', marginBottom: 16 },
+  list:      { padding: 16, paddingBottom: 40 },
+  empty:     { textAlign: 'center', color: 'rgba(255,255,255,0.3)', marginTop: 40 },
+
+  record:     { flexDirection: 'row', marginBottom: 16 },
   recordLeft: { alignItems: 'center', marginRight: 14, width: 16 },
-  dot: { width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.accentBlue, marginTop: 4 },
-  line: { flex: 1, width: 2, backgroundColor: '#e0e0e0', marginTop: 4 },
+  dot:        { width: 12, height: 12, borderRadius: 6, backgroundColor: COLORS.accent, marginTop: 4 },
+  line:       { flex: 1, width: 2, backgroundColor: COLORS.surfaceBorder, marginTop: 4 },
+
   recordContent: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderRadius: 10,
     padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
   },
-  recordRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  recordTime: { fontSize: 13, color: COLORS.darkGray },
-  lateBadge: { backgroundColor: '#fde8e8', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
-  lateText: { fontSize: 11, color: COLORS.danger, fontWeight: '600' },
-  duration: { fontSize: 12, color: COLORS.gray, marginLeft: 'auto' },
-  activeRow: { backgroundColor: '#d4edda', borderRadius: 6, paddingHorizontal: 8, marginTop: 2 },
+  recordRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  recordTime: { fontSize: 13, color: COLORS.white },
+  lateBadge:  { backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  lateText:   { fontSize: 11, color: COLORS.danger, fontWeight: '600' },
+  duration:   { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto' },
+  activeRow:  { backgroundColor: 'rgba(34,197,94,0.15)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginTop: 2 },
   activeText: { fontSize: 12, color: COLORS.success, fontWeight: '600' },
 });

@@ -48,7 +48,13 @@ export default function MyAttendanceScreen() {
         data={records}
         keyExtractor={(i) => i.id}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(0, true); }} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); load(0, true); }}
+            tintColor={COLORS.accent}
+          />
+        }
         onEndReached={() => { if ((page + 1) * PAGE < total) load((page + 1) * PAGE); }}
         onEndReachedThreshold={0.3}
         ListEmptyComponent={<Text style={styles.empty}>Sin registros aún</Text>}
@@ -56,7 +62,7 @@ export default function MyAttendanceScreen() {
           const duration = calcDuration(item.checkIn, item.checkOut);
           return (
             <View style={styles.record}>
-              <View style={[styles.statusDot, { backgroundColor: item.checkOut ? COLORS.gray : COLORS.success }]} />
+              <View style={[styles.statusDot, { backgroundColor: item.checkOut ? 'rgba(255,255,255,0.2)' : COLORS.success }]} />
               <View style={{ flex: 1 }}>
                 <View style={styles.row}>
                   <Ionicons name="log-in-outline" size={14} color={COLORS.success} />
@@ -84,17 +90,22 @@ export default function MyAttendanceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  header: { backgroundColor: COLORS.primary, padding: 20 },
+  container:   { flex: 1, backgroundColor: COLORS.primaryDark },
+  header:      { backgroundColor: COLORS.primary, padding: 20 },
   headerTitle: { fontSize: 17, fontWeight: '700', color: COLORS.white },
   headerCount: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
-  list: { padding: 16, gap: 8, paddingBottom: 30 },
-  empty: { textAlign: 'center', color: COLORS.gray, marginTop: 40 },
-  record: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: 12, padding: 14, gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, elevation: 1 },
+  list:        { padding: 16, gap: 8, paddingBottom: 30 },
+  empty:       { textAlign: 'center', color: 'rgba(255,255,255,0.3)', marginTop: 40 },
+  record: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: 12, padding: 14, gap: 12,
+    borderWidth: 1, borderColor: COLORS.surfaceBorder,
+  },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-  time: { fontSize: 13, color: COLORS.darkGray },
-  late: { fontSize: 11, color: COLORS.danger, backgroundColor: '#fde8e8', paddingHorizontal: 5, borderRadius: 6 },
-  duration: { fontSize: 12, color: COLORS.gray, marginLeft: 'auto' },
-  active: { fontSize: 12, color: COLORS.success, fontWeight: '600' },
+  row:       { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  time:      { fontSize: 13, color: COLORS.white },
+  late:      { fontSize: 11, color: COLORS.danger, backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 5, borderRadius: 6 },
+  duration:  { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginLeft: 'auto' },
+  active:    { fontSize: 12, color: COLORS.success, fontWeight: '600' },
 });

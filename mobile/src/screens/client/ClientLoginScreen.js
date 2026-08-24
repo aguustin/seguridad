@@ -8,6 +8,7 @@ import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { COLORS } from '../../config/constants';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
 export default function ClientLoginScreen({ navigation }) {
   const [username, setUsername] = useState('');
@@ -59,6 +60,7 @@ export default function ClientLoginScreen({ navigation }) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Iniciar sesión</Text>
           <Input
+            dark
             label="Usuario"
             placeholder="Tu usuario"
             value={username}
@@ -67,6 +69,7 @@ export default function ClientLoginScreen({ navigation }) {
             autoCapitalize="none"
           />
           <Input
+            dark
             label="Contraseña"
             placeholder="Tu contraseña"
             value={password}

@@ -58,10 +58,9 @@ export default function EmergencyScreen({ navigation }) {
                 latitude: location?.latitude,
                 longitude: location?.longitude,
               });
-              // También por socket para tiempo real
               sendEmergency(location?.latitude, location?.longitude, message);
               setSent(true);
-            } catch (err) {
+            } catch {
               Alert.alert('Error', 'No se pudo enviar la alerta. Intentá de nuevo.');
             } finally {
               setSending(false);
@@ -93,7 +92,7 @@ export default function EmergencyScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
-        <Ionicons name="close" size={26} color={COLORS.darkGray} />
+        <Ionicons name="close" size={26} color="rgba(255,255,255,0.6)" />
       </TouchableOpacity>
 
       <View style={styles.topSection}>
@@ -115,10 +114,11 @@ export default function EmergencyScreen({ navigation }) {
           value={message}
           onChangeText={setMessage}
           placeholder="Describí brevemente la situación..."
-          placeholderTextColor={COLORS.gray}
+          placeholderTextColor="rgba(255,255,255,0.3)"
           multiline
           numberOfLines={3}
           maxLength={200}
+          textAlignVertical="top"
         />
         <Text style={styles.charCount}>{message.length}/200</Text>
 
@@ -146,72 +146,55 @@ export default function EmergencyScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white, padding: 24, paddingTop: 50 },
-  closeBtn: { alignSelf: 'flex-end', padding: 4, marginBottom: 10 },
-  topSection: { alignItems: 'center', marginBottom: 32 },
+  container:    { flex: 1, backgroundColor: COLORS.primaryDark, padding: 24, paddingTop: 50 },
+  closeBtn:     { alignSelf: 'flex-end', padding: 4, marginBottom: 10 },
+
+  topSection:   { alignItems: 'center', marginBottom: 32 },
   pulseOuter: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(231,76,60,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 140, height: 140, borderRadius: 70,
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    justifyContent: 'center', alignItems: 'center',
     marginBottom: 20,
   },
   emergencyCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 110, height: 110, borderRadius: 55,
     backgroundColor: COLORS.danger,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
-  title: { fontSize: 22, fontWeight: '800', color: COLORS.darkGray, textAlign: 'center' },
-  subtitle: { fontSize: 14, color: COLORS.gray, textAlign: 'center', marginTop: 8, lineHeight: 20, paddingHorizontal: 10 },
-  form: { marginBottom: 24 },
-  label: { fontSize: 14, fontWeight: '600', color: COLORS.darkGray, marginBottom: 8 },
+  title:    { fontSize: 22, fontWeight: '800', color: COLORS.white, textAlign: 'center' },
+  subtitle: { fontSize: 14, color: 'rgba(255,255,255,0.55)', textAlign: 'center', marginTop: 8, lineHeight: 20, paddingHorizontal: 10 },
+
+  form:  { marginBottom: 24 },
+  label: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.7)', marginBottom: 8 },
   input: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 14,
-    color: COLORS.darkGray,
-    borderWidth: 1.5,
-    borderColor: '#e0e0e0',
+    backgroundColor: COLORS.surface,
+    borderRadius: 12, padding: 14,
+    fontSize: 14, color: COLORS.white,
+    borderWidth: 1.5, borderColor: COLORS.surfaceBorder,
     minHeight: 80,
-    textAlignVertical: 'top',
   },
-  charCount: { textAlign: 'right', fontSize: 11, color: COLORS.gray, marginTop: 4 },
+  charCount: { textAlign: 'right', fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 4 },
   locationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#d4edda',
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(34,197,94,0.15)',
+    borderRadius: 8, padding: 10, marginTop: 12,
+    borderWidth: 1, borderColor: 'rgba(34,197,94,0.3)',
   },
   locationText: { fontSize: 13, color: COLORS.success, fontWeight: '500' },
+
   sendBtn: {
-    backgroundColor: COLORS.danger,
-    borderRadius: 14,
-    paddingVertical: 18,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 10,
-    shadowColor: COLORS.danger,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    elevation: 6,
+    backgroundColor: COLORS.danger, borderRadius: 14, paddingVertical: 18,
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
+    shadowColor: COLORS.danger, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4, elevation: 6,
   },
   sendBtnDisabled: { opacity: 0.7 },
-  sendBtnText: { color: COLORS.white, fontSize: 18, fontWeight: '900', letterSpacing: 1 },
-  // Sent state
-  sentContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  sentIcon: { marginBottom: 20 },
-  sentTitle: { fontSize: 24, fontWeight: '800', color: COLORS.darkGray, marginBottom: 12 },
-  sentText: { fontSize: 15, color: COLORS.gray, textAlign: 'center', lineHeight: 22 },
-  backBtn: { marginTop: 32, backgroundColor: COLORS.accentBlue, paddingHorizontal: 30, paddingVertical: 14, borderRadius: 12 },
-  backBtnText: { color: COLORS.white, fontSize: 16, fontWeight: '700' },
+  sendBtnText:     { color: COLORS.white, fontSize: 18, fontWeight: '900', letterSpacing: 1 },
+
+  sentContainer: { flex: 1, backgroundColor: COLORS.primaryDark, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  sentIcon:      { marginBottom: 20 },
+  sentTitle:     { fontSize: 24, fontWeight: '800', color: COLORS.white, marginBottom: 12 },
+  sentText:      { fontSize: 15, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 22 },
+  backBtn:       { marginTop: 32, backgroundColor: COLORS.accent, paddingHorizontal: 30, paddingVertical: 14, borderRadius: 12 },
+  backBtnText:   { color: COLORS.primary, fontSize: 16, fontWeight: '700' },
 });

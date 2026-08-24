@@ -80,7 +80,9 @@ export default function SecurityChatScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderMsg}
         contentContainerStyle={styles.list}
-        ListEmptyComponent={<Text style={styles.empty}>No hay mensajes aún. ¡Saludá a tus compañeros!</Text>}
+        ListEmptyComponent={
+          <Text style={styles.empty}>No hay mensajes aún. ¡Saludá a tus compañeros!</Text>
+        }
       />
 
       <View style={styles.inputBar}>
@@ -89,7 +91,7 @@ export default function SecurityChatScreen() {
           value={text}
           onChangeText={setText}
           placeholder="Escribe un mensaje..."
-          placeholderTextColor={COLORS.gray}
+          placeholderTextColor="rgba(255,255,255,0.3)"
           multiline
           onSubmitEditing={handleSend}
         />
@@ -98,7 +100,7 @@ export default function SecurityChatScreen() {
           onPress={handleSend}
           disabled={!text.trim()}
         >
-          <Ionicons name="send" size={20} color={COLORS.white} />
+          <Ionicons name="send" size={20} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -106,7 +108,7 @@ export default function SecurityChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1, backgroundColor: COLORS.primaryDark },
   header: {
     backgroundColor: COLORS.primary,
     padding: 16,
@@ -115,50 +117,49 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   headerTitle: { fontSize: 17, fontWeight: '700', color: COLORS.white },
-  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
-  list: { padding: 16, paddingBottom: 8, gap: 8 },
-  empty: { textAlign: 'center', color: COLORS.gray, marginTop: 40, fontSize: 14 },
-  msgWrapper: { maxWidth: '80%' },
-  msgLeft: { alignSelf: 'flex-start' },
-  msgRight: { alignSelf: 'flex-end' },
-  senderName: { fontSize: 11, color: COLORS.gray, marginBottom: 2, marginLeft: 4 },
-  bubble: {
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+  headerSub:   { fontSize: 12, color: 'rgba(255,255,255,0.6)' },
+
+  list:  { padding: 16, paddingBottom: 8, gap: 8 },
+  empty: { textAlign: 'center', color: 'rgba(255,255,255,0.3)', marginTop: 40, fontSize: 14 },
+
+  msgWrapper:  { maxWidth: '80%' },
+  msgLeft:     { alignSelf: 'flex-start' },
+  msgRight:    { alignSelf: 'flex-end' },
+  senderName:  { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 2, marginLeft: 4 },
+
+  bubble:      { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
+  bubbleMe:    { backgroundColor: COLORS.accent, borderBottomRightRadius: 4 },
+  bubbleOther: {
+    backgroundColor: COLORS.surface,
+    borderBottomLeftRadius: 4,
+    borderWidth: 1, borderColor: COLORS.surfaceBorder,
   },
-  bubbleMe: { backgroundColor: COLORS.accentBlue, borderBottomRightRadius: 4 },
-  bubbleOther: { backgroundColor: COLORS.white, borderBottomLeftRadius: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, elevation: 1 },
-  msgText: { fontSize: 14, color: COLORS.darkGray },
-  msgTextMe: { color: COLORS.white },
-  msgTime: { fontSize: 10, color: COLORS.gray, marginTop: 2, alignSelf: 'flex-end' },
+  msgText:    { fontSize: 14, color: 'rgba(255,255,255,0.9)' },
+  msgTextMe:  { color: COLORS.primary, fontWeight: '500' },
+  msgTime:    { fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2, alignSelf: 'flex-end' },
+
   inputBar: {
     flexDirection: 'row',
     padding: 12,
     paddingBottom: Platform.OS === 'ios' ? 28 : 12,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     alignItems: 'flex-end',
     gap: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: COLORS.surfaceBorder,
   },
   input: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: COLORS.primaryLight,
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
-    color: COLORS.darkGray,
+    color: COLORS.white,
     maxHeight: 100,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceBorder,
   },
-  sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: COLORS.accentBlue,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sendBtnDisabled: { backgroundColor: '#b0b0b0' },
+  sendBtn:         { width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.accent, justifyContent: 'center', alignItems: 'center' },
+  sendBtnDisabled: { backgroundColor: COLORS.surfaceBorder },
 });

@@ -37,14 +37,11 @@ async function start() {
     await SecurityStaff.update({ isOnDuty: false }, { where: { isOnDuty: true } });
     console.log('✅ Estado de guardias reiniciado');
 
-    // Intentar cargar modelos de reconocimiento facial (no bloquea si falla)
-    const faceModelsLoaded = await loadModels();
-    if (faceModelsLoaded) {
-      console.log('✅ Modelos de reconocimiento facial cargados');
-    } else {
-      console.warn('⚠️  Modelos de reconocimiento facial no disponibles');
-      console.warn('   Para activarlos: npm run download-models');
-    }
+    // Arrancar el worker de reconocimiento facial (warm-up). Los modelos de
+    // face-api vienen empaquetados dentro de node_modules/@vladmandic/face-api,
+    // así que no hace falta descargar ni configurar nada aparte.
+    await loadModels();
+    console.log('✅ Worker de reconocimiento facial iniciado');
 
     httpServer.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en puerto ${PORT}`);

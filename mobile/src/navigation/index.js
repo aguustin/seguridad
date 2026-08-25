@@ -3,10 +3,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useKiosk } from '../context/KioskContext';
 import { COLORS } from '../config/constants';
 
 // Screens
 import RoleSelectScreen from '../screens/RoleSelectScreen';
+import ScannerScreen from '../screens/security/ScannerScreen';
 
 // Admin
 import AdminLoginScreen from '../screens/admin/AdminLoginScreen';
@@ -91,6 +93,14 @@ function SecurityNavigator() {
   );
 }
 
+function KioskNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: false }}>
+      <Stack.Screen name="Scanner" component={ScannerScreen} />
+    </Stack.Navigator>
+  );
+}
+
 function ClientNavigator() {
   return (
     <Stack.Navigator screenOptions={commonHeaderStyle}>
@@ -103,12 +113,25 @@ function ClientNavigator() {
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
+  const { kioskActive, kioskLoading } = useKiosk();
 
-  if (loading) {
+  if (loading || kioskLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.primary }}>
         <ActivityIndicator size="large" color={COLORS.accent} />
       </View>
+    );
+  }
+
+  // El modo escáner tiene prioridad absoluta: sin importar si hay una sesión
+  // de admin/guardia/cliente activa en este dispositivo, si el flag está
+  // prendido lo único que se puede ver es el escáner. Solo se apaga
+  // validando credenciales de administrador (ver KioskContext).
+  if (kioskActive) {
+    return (
+      <NavigationContainer>
+        <KioskNavigator />
+      </NavigationContainer>
     );
   }
 

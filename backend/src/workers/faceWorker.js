@@ -7,6 +7,9 @@ const { parentPort } = require('worker_threads');
 const path = require('path');
 const fs = require('fs');
 
+// Los modelos vienen empaquetados dentro del propio paquete npm de
+// @vladmandic/face-api — no hace falta descargarlos aparte ni versionarlos
+// en el repo. `npm install` alcanza (Render Free incluido).
 const MODELS_PATH = path.join(
   __dirname,
   '../../node_modules/@vladmandic/face-api/model'
@@ -99,10 +102,7 @@ parentPort.on('message', async ({ id, imageData }) => {
     const img = await loadImage(buffer);
 
     if (!img.width || !img.height) {
-      parentPort.postMessage({
-        id,
-        descriptor: null
-      });
+      parentPort.postMessage({ id, descriptor: null });
       return;
     }
 
@@ -113,18 +113,10 @@ parentPort.on('message', async ({ id, imageData }) => {
 
     parentPort.postMessage({
       id,
-      descriptor: detection
-        ? Array.from(detection.descriptor)
-        : null
+      descriptor: detection ? Array.from(detection.descriptor) : null,
     });
-
   } catch (err) {
-    console.error(`[FaceWorker] Error procesando ID ${id}:`, err);
-
-    parentPort.postMessage({
-      id,
-      descriptor: null,
-      error: err.message
-    });
+    console.error(`[FaceWorker] Error procesando ID ${id}:`, err.message);
+    parentPort.postMessage({ id, descriptor: null, error: err.message });
   }
 });

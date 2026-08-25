@@ -101,7 +101,9 @@ exports.securityFaceScan = async (req, res) => {
       return res.status(400).json({ error: 'No se detectó un rostro en la imagen' });
     }
 
-    // Buscar guardias activos con descriptor facial
+    // Buscar guardias activos con descriptor facial. Se comparan en memoria
+    // acá porque el volumen es bajo (decenas/pocos cientos de guardias por
+    // barrio) — no vale la pena traer una librería de vector search para esto.
     const allStaff = await SecurityStaff.findAll({
       where: { isActive: true },
       attributes: ['id', 'firstName', 'lastName', 'faceDescriptor', 'neighborhoodId', 'isOnDuty', 'shiftStart', 'shiftEnd'],
@@ -110,36 +112,16 @@ exports.securityFaceScan = async (req, res) => {
     let matched = null;
     let bestDistance = Infinity;
 
-   console.log("[Auth] Cantidad de guardias encontrados:", allStaff.length);
+    for (const staff of allStaff) {
+      if (!staff.faceDescriptor) continue;
 
-for (const staff of allStaff) {
-  console.log(`[Auth] Evaluando guardia ID ${staff.id}`);
+      const result = faceService.compareDescriptors(scannedDescriptor, staff.faceDescriptor);
 
-  if (!staff.faceDescriptor) {
-    console.log(`[Auth] Guardia ${staff.id} sin descriptor facial`);
-    continue;
-  }
-
-  const result = faceService.compareDescriptors(
-    scannedDescriptor,
-    staff.faceDescriptor
-  );
-
-  console.log(
-    `[Auth] Comparación con ${staff.firstName}:`,
-    "match =", result.match,
-    "distance =", result.distance
-  );
-
-  if (result.match && result.distance < bestDistance) {
-    bestDistance = result.distance;
-    matched = staff;
-
-    console.log(
-      `[Auth] Nuevo mejor match: ${staff.firstName} (${result.distance})`
-    );
-  }
-}
+      if (result.match && result.distance < bestDistance) {
+        bestDistance = result.distance;
+        matched = staff;
+      }
+    }
 
     if (!matched) {
       // Verificar si hay guardias sin descriptor (recién registrados, WASM todavía procesando)
@@ -152,8 +134,6 @@ for (const staff of allStaff) {
 
     // Determinar si es ingreso o salida
     const { AttendanceRecord } = require('../models');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     const lastRecord = await AttendanceRecord.findOne({
       where: { securityStaffId: matched.id },
@@ -206,6 +186,7 @@ for (const staff of allStaff) {
         message: `Hasta pronto, ${matched.firstName} ${matched.lastName}`,
         time: new Date(),
         record: { ...lastRecord.toJSON(), checkOut: new Date() },
+        staff: { id: matched.id, firstName: matched.firstName, lastName: matched.lastName, neighborhoodId: matched.neighborhoodId },
       });
     }
   } catch (err) {

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
+import { KioskProvider } from './src/context/KioskContext';
 import AppNavigator from './src/navigation';
 
 // Configurar notificaciones
@@ -29,10 +30,12 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <StatusBar style="light" />
-        <AppNavigator />
-      </AuthProvider>
+      <KioskProvider>
+        <AuthProvider>
+          <StatusBar style="light" />
+          <AppNavigator />
+        </AuthProvider>
+      </KioskProvider>
     </GestureHandlerRootView>
   );
 }

@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { useKiosk } from '../../context/KioskContext';
 import { getSecurityStaff, getNeighborhoods, getAlerts } from '../../services/api';
 import { getSocket } from '../../services/socket';
 import { COLORS } from '../../config/constants';
@@ -40,8 +41,20 @@ const QuickAction = ({ icon, label, color, onPress }) => (
 
 export default function AdminDashboardScreen({ navigation }) {
   const { user, logout } = useAuth();
+  const { activateKiosk } = useKiosk();
   const [stats, setStats] = useState({ total: 0, active: 0, neighborhoods: 0, alerts: 0 });
   const [refreshing, setRefreshing] = useState(false);
+
+  function confirmActivateKiosk() {
+    Alert.alert(
+      'Activar modo escáner',
+      'Este dispositivo va a quedar bloqueado en la pantalla de escaneo facial. Solo va a poder salir con usuario y contraseña de administrador. ¿Continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Activar', onPress: activateKiosk },
+      ]
+    );
+  }
 
   useEffect(() => {
     loadStats();
@@ -163,6 +176,7 @@ export default function AdminDashboardScreen({ navigation }) {
           <QuickAction icon="megaphone-outline"  label="Enviar alerta" color={COLORS.danger}  onPress={() => navigation.navigate('SendAlert')} />
           <QuickAction icon="wallet-outline"     label="Finanzas"      color="#a78bfa"        onPress={() => navigation.navigate('Finances')} />
           <QuickAction icon="bar-chart-outline"  label="Estadísticas"  color="#34d399"        onPress={() => navigation.navigate('Statistics')} />
+          <QuickAction icon="scan-outline"       label="Modo escáner"  color={COLORS.info}    onPress={confirmActivateKiosk} />
         </View>
       </View>
     </ScrollView>

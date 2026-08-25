@@ -29,11 +29,12 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 });
 
-// Para reconocimiento facial (imagen en base64 o archivo)
+// Para reconocimiento facial: la app pide una foto ~1280x720 (ver
+// useFaceScanner en mobile), pero se deja algo de margen por las dudas.
 const faceUpload = multer({
   storage: multer.memoryStorage(),
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 8 * 1024 * 1024 },
 });
 
 module.exports = { upload, faceUpload };

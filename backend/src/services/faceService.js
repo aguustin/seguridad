@@ -1,15 +1,26 @@
 /**
  * faceService.js
  *
- * Toda la detección facial corre en un worker_thread separado.
- * Si el WASM crashea (Error: Failed to convert napi value ...), el worker
- * muere pero el proceso principal sigue funcionando normalmente.
+ * Punto de entrada único al reconocimiento facial. Toda la detección corre
+ * en un worker_thread aparte (ver workers/faceWorker.js): si face-api/WASM
+ * crashea, el worker muere pero el proceso principal de Express sigue
+ * funcionando con normalidad. El worker se reinicia solo en la próxima
+ * llamada.
+ *
+ * Se llama UNA vez por escaneo (evento "se detectó una cara" del cliente),
+ * nunca en un loop — el volumen esperado es bajo (guardias entrando/saliendo
+ * por una puerta), así que no hace falta ninguna cola ni pool de workers.
  */
 const { Worker } = require('worker_threads');
 const path = require('path');
 
 const WORKER_PATH = path.join(__dirname, '../workers/faceWorker.js');
 const THRESHOLD = parseFloat(process.env.FACE_MATCH_THRESHOLD) || 0.5;
+// Tiempo máximo para extraer un descriptor. Los modelos ya están cargados en
+// memoria del lado del worker antes de que llegue la primera imagen real
+// (ver loadModels(), se llama al arrancar el servidor), así que un timeout
+// largo acá solo demoraría la respuesta de un escaneo real que falló.
+const EXTRACT_TIMEOUT_MS = parseInt(process.env.FACE_EXTRACT_TIMEOUT_MS, 10) || 20_000;
 
 let worker = null;
 const pending = new Map(); // id → { resolve, timer }
@@ -20,28 +31,14 @@ let nextId = 1;
 function spawnWorker() {
   const w = new Worker(WORKER_PATH);
 
- w.on('message', ({ id, descriptor }) => {
-  console.log("[FaceService] Respuesta worker ID:", id);
+  w.on('message', ({ id, descriptor }) => {
+    const entry = pending.get(id);
+    if (!entry) return;
 
-  const entry = pending.get(id);
-
-  if (!entry) return;
-
-  clearTimeout(entry.timer);
-
-  pending.delete(id);
-
-  console.log(
-    "[FaceService] Descriptor recibido:",
-    descriptor ? "OK" : "NULL"
-  );
-
-  entry.resolve(
-    descriptor
-      ? new Float32Array(descriptor)
-      : null
-  );
-});
+    clearTimeout(entry.timer);
+    pending.delete(id);
+    entry.resolve(descriptor ? new Float32Array(descriptor) : null);
+  });
 
   w.on('error', (err) => {
     console.error('[FaceService] Worker error:', err.message);
@@ -73,9 +70,9 @@ function getWorker() {
   return worker;
 }
 
-// Inicializar el worker al arrancar el servidor (warm-up)
+// Inicializar el worker al arrancar el servidor (warm-up): así los modelos
+// ya están cargados en memoria cuando llegue el primer escaneo real.
 function loadModels() {
-  // Apenas se obtiene el worker empieza a cargar los modelos
   getWorker();
   return Promise.resolve(true);
 }
@@ -85,57 +82,41 @@ function loadModels() {
 /**
  * Extrae el descriptor facial de un buffer de imagen.
  * Resuelve con Float32Array o null si no se detecta rostro.
- * NUNCA rechaza: ante cualquier error resuelve null.
+ * NUNCA rechaza: ante cualquier error (timeout, crash del worker, imagen
+ * inválida) resuelve null — es responsabilidad del caller tratar null como
+ * "no se pudo procesar la imagen".
  */
 function extractDescriptor(imageBuffer) {
   return new Promise((resolve) => {
     const id = nextId++;
 
-    console.log("[FaceService] Iniciando extracción descriptor ID:", id);
-
     const timer = setTimeout(() => {
       pending.delete(id);
-
-      console.warn('[FaceService] Timeout para id', id);
-
+      console.warn(`[FaceService] Timeout (${EXTRACT_TIMEOUT_MS}ms) esperando descriptor id=${id}`);
       resolve(null);
-    }, 120_000);
+    }, EXTRACT_TIMEOUT_MS);
 
     pending.set(id, { resolve, timer });
 
     try {
-      const buf = Buffer.isBuffer(imageBuffer)
-        ? imageBuffer
-        : Buffer.from(imageBuffer);
-
-      console.log("[FaceService] Enviando imagen al worker ID:", id);
-
-      getWorker().postMessage(
-        { id, imageData: buf },
-        [buf.buffer]
-      );
-
+      const buf = Buffer.isBuffer(imageBuffer) ? imageBuffer : Buffer.from(imageBuffer);
+      getWorker().postMessage({ id, imageData: buf }, [buf.buffer]);
     } catch (err) {
       clearTimeout(timer);
-
       pending.delete(id);
-
-      console.error(
-        '[FaceService] Error enviando mensaje al worker:',
-        err.message
-      );
-
+      console.error('[FaceService] Error enviando imagen al worker:', err.message);
       resolve(null);
     }
   });
 }
 
 /**
- * Compara un descriptor extraído contra uno almacenado en DB (JSON string).
+ * Compara un descriptor recién extraído contra uno almacenado en DB (JSON string).
+ * Distancia euclidiana manual: face-api no corre en el hilo principal, así
+ * que no hay que importar toda la librería solo para esta cuenta.
  */
 function compareDescriptors(descriptor1, storedDescriptorJson) {
   const stored = new Float32Array(JSON.parse(storedDescriptorJson));
-  // Distancia euclidiana manual (face-api no está disponible en hilo principal)
   let sum = 0;
   for (let i = 0; i < descriptor1.length; i++) {
     const diff = descriptor1[i] - stored[i];

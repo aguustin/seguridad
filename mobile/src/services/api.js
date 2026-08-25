@@ -10,18 +10,27 @@ export const api = axios.create({
 // axios + React Native FormData tiene un bug conocido: el Content-Type queda
 // sin boundary y multer cuelga esperando parsear el body → "Network Error".
 // La solución confiable es usar fetch nativo de React Native para uploads.
-async function multipartPost(path, formData) {
+async function multipartPost(path, formData, timeoutMs = 30000) {
   const headers = { 'Content-Type': 'multipart/form-data' };
 
   // Incluir token de auth si está disponible en el interceptor de axios
   const token = api.defaults.headers.common['Authorization'];
   if (token) headers['Authorization'] = token;
 
-  const res = await fetch(`${API_URL}${path}`, {
-    method: 'POST',
-    headers,
-    body: formData,
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 
   const json = await res.json();
   if (!res.ok) {
@@ -45,8 +54,11 @@ export const clientLogin = (username, password) =>
 export const securityRegister = (formData) =>
   multipartPost('/auth/security/register', formData);
 
+// Timeout más largo que el resto: contempla el cold-start del backend en
+// Render Free (puede tardar ~30-50s en "despertar") + el tiempo de
+// inferencia de face-api.
 export const faceScan = (formData) =>
-  multipartPost('/auth/security/face-scan', formData);
+  multipartPost('/auth/security/face-scan', formData, 45000);
 
 // ── Admin - Barrios ────────────────────────────────────────────────────────
 export const getNeighborhoods = () => api.get('/admin/neighborhoods');

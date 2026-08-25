@@ -6,8 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "db:sync": "node src/config/syncDatabase.js",
-    "download-models": "node scripts/downloadModels.js"
+    "db:sync": "node src/config/syncDatabase.js"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",

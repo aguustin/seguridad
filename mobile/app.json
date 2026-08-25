@@ -45,7 +45,6 @@
       ]
     },
     "plugins": [
-      "expo-camera",
       "expo-location",
       [
         "react-native-vision-camera",

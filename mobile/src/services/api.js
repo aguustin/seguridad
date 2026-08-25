@@ -51,9 +51,6 @@ export const adminRegister = (data) =>
 export const clientLogin = (username, password) =>
   api.post('/auth/client/login', { username, password });
 
-export const securityRegister = (formData) =>
-  multipartPost('/auth/security/register', formData);
-
 // Timeout más largo que el resto: contempla el cold-start del backend en
 // Render Free (puede tardar ~30-50s en "despertar") + el tiempo de
 // inferencia de face-api.
@@ -66,6 +63,10 @@ export const createNeighborhood = (data) => api.post('/admin/neighborhoods', dat
 export const updateNeighborhood = (id, data) => api.put(`/admin/neighborhoods/${id}`, data);
 
 // ── Admin - Guardias ───────────────────────────────────────────────────────
+// Alta de guardias: antes era pública (auth/security/register), ahora
+// requiere admin autenticado.
+export const createSecurityStaff = (formData) =>
+  multipartPost('/admin/security', formData);
 export const getSecurityStaff = (neighborhoodId) =>
   api.get('/admin/security', { params: { neighborhoodId } });
 export const getSecurityProfile = (id) => api.get(`/admin/security/${id}`);
@@ -99,6 +100,9 @@ export const getFinancialStats = (period) =>
 export const updateFinancialRecord = (id, data) => api.put(`/admin/finances/${id}`, data);
 export const deleteFinancialRecord = (id) => api.delete(`/admin/finances/${id}`);
 
+// ── Admin - Administradores ────────────────────────────────────────────────
+export const createAdmin = (data) => api.post('/admin/admins', data);
+
 // ── Admin - Operador ───────────────────────────────────────────────────────
 export const assignOperator = (id) => api.post(`/admin/security/${id}/assign-operator`);
 export const removeOperator = () => api.delete('/admin/operator');
@@ -123,3 +127,10 @@ export const toggleLocationSharing = (enabled) =>
   api.post('/client/location-sharing', { enabled });
 export const getClientChat = (params) => api.get('/client/chat', { params });
 export const sendEmergencyAlert = (data) => api.post('/client/emergency', data);
+
+// ── Kiosco (apertura/cierre) ───────────────────────────────────────────────
+// Público — lo consulta el dispositivo kiosco antes de cualquier sesión.
+export const getKioskStatus = () => api.get('/kiosk/status');
+// Solo admin.
+export const getKioskState = () => api.get('/kiosk');
+export const setKioskState = (isOpen) => api.patch('/kiosk', { isOpen });

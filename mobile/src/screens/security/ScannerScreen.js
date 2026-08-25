@@ -9,8 +9,13 @@ import { useFaceScanner, SCAN_STATUS } from '../../hooks/useFaceScanner';
 import FaceScannerCamera from '../../components/FaceScannerCamera';
 import { useKiosk } from '../../context/KioskContext';
 import { useAuth } from '../../context/AuthContext';
+import { getKioskStatus } from '../../services/api';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
+
+// Cada cuánto se vuelve a consultar si el kiosco sigue abierto (no hay
+// socket disponible acá: el dispositivo todavía no tiene sesión/JWT).
+const KIOSK_STATUS_POLL_MS = 15000;
 
 /**
  * "Modo Escáner": pantalla fija para el dispositivo de la puerta de entrada.
@@ -31,8 +36,36 @@ export default function ScannerScreen() {
   const [exitError, setExitError] = useState('');
   const [exiting, setExiting] = useState(false);
 
+  // Estado del kiosco (abierto/cerrado), controlado por el admin desde el
+  // backend. null = todavía no se pudo confirmar (no escanea, por las dudas).
+  const [doorOpen, setDoorOpen] = useState(null);
+
   useEffect(() => {
     if (!hasPermission) requestPermission();
+  }, []);
+
+  // Consulta el estado del kiosco al montar y cada KIOSK_STATUS_POLL_MS.
+  // Si una consulta falla (ej. cold-start de Render) se mantiene el último
+  // estado confirmado en vez de cerrar el kiosco por un error transitorio;
+  // pero si todavía no se confirmó ningún estado, no se habilita el escaneo.
+  useEffect(() => {
+    let mounted = true;
+
+    async function checkDoorStatus() {
+      try {
+        const { data } = await getKioskStatus();
+        if (mounted) setDoorOpen(!!data.isOpen);
+      } catch {
+        if (mounted) setDoorOpen((prev) => (prev === null ? false : prev));
+      }
+    }
+
+    checkDoorStatus();
+    const interval = setInterval(checkDoorStatus, KIOSK_STATUS_POLL_MS);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   // Bloquear el botón "atrás" de Android: en modo escáner no se sale de acá.
@@ -102,16 +135,23 @@ export default function ScannerScreen() {
 
   const accent = isCheckIn ? COLORS.success : isCheckOut ? COLORS.info : isError ? COLORS.danger : COLORS.accent;
 
+  // Estado del kiosco: mientras no esté confirmado como abierto, la cámara
+  // ni siquiera se monta más abajo — cero detección, cero captura.
+  const doorChecking = doorOpen === null;
+  const doorClosed = doorOpen === false;
+
   return (
     <View style={styles.container}>
-      <FaceScannerCamera
-        cameraRef={cameraRef}
-        device={device}
-        format={format}
-        isActive
-        paused={status !== SCAN_STATUS.WAITING}
-        onFacesDetected={onFacesDetected}
-      />
+      {doorOpen === true && (
+        <FaceScannerCamera
+          cameraRef={cameraRef}
+          device={device}
+          format={format}
+          isActive
+          paused={status !== SCAN_STATUS.WAITING}
+          onFacesDetected={onFacesDetected}
+        />
+      )}
 
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         <View style={styles.topBar}>
@@ -125,20 +165,35 @@ export default function ScannerScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.center} pointerEvents="none">
-          <View style={[styles.frame, { borderColor: accent }]}>
-            {isProcessing
-              ? <ActivityIndicator color={accent} size="large" />
-              : <Ionicons
-                  name={isCheckIn ? 'checkmark-circle' : isCheckOut ? 'log-out-outline' : isError ? 'alert-circle' : 'scan-outline'}
-                  size={64}
-                  color={accent}
-                />}
+        {doorChecking ? (
+          <View style={styles.center} pointerEvents="none">
+            <ActivityIndicator color={COLORS.accent} size="large" />
+            <Text style={styles.headline}>Verificando estado del kiosco...</Text>
           </View>
+        ) : doorClosed ? (
+          <View style={styles.center} pointerEvents="none">
+            <View style={[styles.frame, { borderColor: 'rgba(255,255,255,0.25)' }]}>
+              <Ionicons name="lock-closed-outline" size={64} color="rgba(255,255,255,0.4)" />
+            </View>
+            <Text style={styles.headline}>Kiosco cerrado</Text>
+            <Text style={styles.subline}>Esperando habilitación del administrador</Text>
+          </View>
+        ) : (
+          <View style={styles.center} pointerEvents="none">
+            <View style={[styles.frame, { borderColor: accent }]}>
+              {isProcessing
+                ? <ActivityIndicator color={accent} size="large" />
+                : <Ionicons
+                    name={isCheckIn ? 'checkmark-circle' : isCheckOut ? 'log-out-outline' : isError ? 'alert-circle' : 'scan-outline'}
+                    size={64}
+                    color={accent}
+                  />}
+            </View>
 
-          <Text style={styles.headline}>{headline}</Text>
-          {!!subline && <Text style={styles.subline}>{subline}</Text>}
-        </View>
+            <Text style={styles.headline}>{headline}</Text>
+            {!!subline && <Text style={styles.subline}>{subline}</Text>}
+          </View>
+        )}
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Dispositivo en modo escáner</Text>

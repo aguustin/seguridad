@@ -40,10 +40,6 @@ export function updateLocation(latitude, longitude) {
   socket?.emit('update_location', { latitude, longitude });
 }
 
-export function sendEmergency(latitude, longitude, message) {
-  socket?.emit('client_emergency', { latitude, longitude, message });
-}
-
 export function registerPushToken(token) {
   socket?.emit('register_push_token', { token });
 }

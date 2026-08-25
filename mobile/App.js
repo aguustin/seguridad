@@ -6,6 +6,10 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
 import { KioskProvider } from './src/context/KioskContext';
 import AppNavigator from './src/navigation';
+// Registra el task de background de ubicación (TaskManager.defineTask) —
+// tiene que importarse una sola vez, a nivel de módulo, antes de que
+// cualquier pantalla llame a startLocationUpdatesAsync.
+import './src/services/backgroundLocation';
 
 // Configurar notificaciones
 Notifications.setNotificationHandler({

@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { Admin, SecurityStaff, Client } = require('../models');
 const faceService = require('../services/faceService');
-const path = require('path');
 
 function generateToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -26,6 +25,17 @@ exports.adminLogin = async (req, res) => {
 
 exports.adminRegister = async (req, res) => {
   try {
+    // Este endpoint es público a propósito para poder crear el primer
+    // administrador del sistema (ver README). Una vez que existe al menos
+    // un admin, se cierra: cualquier alta posterior debe hacerse desde el
+    // panel (ver adminController.createAdmin, protegido por requireAdmin).
+    const existingAdmins = await Admin.count();
+    if (existingAdmins > 0) {
+      return res.status(403).json({
+        error: 'Ya existe un administrador. Pedile a un administrador activo que te cree una cuenta desde el panel.',
+      });
+    }
+
     const { username, password, name } = req.body;
     const admin = await Admin.create({ username, password, name });
     const token = generateToken({ id: admin.id, role: 'admin' });
@@ -39,48 +49,11 @@ exports.adminRegister = async (req, res) => {
 };
 
 // ── SECURITY STAFF ─────────────────────────────────────────────────────────
-exports.securityRegister = async (req, res) => {
-  try {
-    const { firstName, lastName, documentNumber, age } = req.body;
-
-    if (!req.file) {
-      return res.status(400).json({ error: 'Se requiere foto de perfil' });
-    }
-
-    const profilePhotoPath = req.file.path
-      ? path.relative(path.join(__dirname, '../../'), req.file.path)
-      : null;
-
-    const imageBuffer =
-      req.file.buffer || require('fs').readFileSync(req.file.path);
-
-    const descriptor = await faceService.extractDescriptor(imageBuffer);
-
-    if (!descriptor) {
-      return res.status(400).json({
-        error: 'No se detectó un rostro válido en la foto de perfil'
-      });
-    }
-
-    const staff = await SecurityStaff.create({
-      firstName,
-      lastName,
-      documentNumber,
-      age: parseInt(age),
-      profilePhoto: profilePhotoPath,
-      faceDescriptor: faceService.descriptorToJson(descriptor),
-    });
-
-    res.status(201).json({
-      message: 'Registro exitoso',
-      staff
-    });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
+// El alta de guardias (creación del registro + extracción del descriptor
+// facial) vive ahora en adminController.createSecurityStaff, protegida por
+// requireAdmin — ver POST /api/admin/security. Acá solo queda el escaneo
+// facial (check-in/check-out), que sigue siendo público porque el
+// dispositivo kiosco no tiene sesión.
 exports.securityFaceScan = async (req, res) => {
   try {
     if (!req.file) {

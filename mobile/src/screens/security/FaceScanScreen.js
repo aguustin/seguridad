@@ -227,9 +227,6 @@ export default function FaceScanScreen({ navigation }) {
               <Text style={styles.scanningLabel}>
                 {status === SCAN_STATUS.WAITING ? 'Escaneando automáticamente...' : 'Procesando...'}
               </Text>
-              <TouchableOpacity style={styles.registerLink} onPress={() => navigation.navigate('SecurityRegister')}>
-                <Text style={styles.registerLinkText}>¿Primera vez? Registrate aquí</Text>
-              </TouchableOpacity>
             </>
           ) : null}
         </View>

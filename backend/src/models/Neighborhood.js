@@ -18,11 +18,14 @@ const Neighborhood = sequelize.define('Neighborhood', {
     type: DataTypes.TEXT,
   },
   latitude: {
-    type: DataTypes.FLOAT,
+    // DOUBLE, no FLOAT: estandariza con SecurityStaff/Client/Alert/
+    // LocationPoint/PatrolCheckpoint, que ya usaban DOUBLE (era el único
+    // modelo con lat/lng en FLOAT).
+    type: DataTypes.DOUBLE,
     allowNull: true,
   },
   longitude: {
-    type: DataTypes.FLOAT,
+    type: DataTypes.DOUBLE,
     allowNull: true,
   },
   isActive: {

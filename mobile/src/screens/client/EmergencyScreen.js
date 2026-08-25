@@ -6,7 +6,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { sendEmergencyAlert } from '../../services/api';
-import { sendEmergency } from '../../services/socket';
 import { COLORS } from '../../config/constants';
 
 export default function EmergencyScreen({ navigation }) {
@@ -53,12 +52,14 @@ export default function EmergencyScreen({ navigation }) {
             Vibration.vibrate([0, 500, 200, 500]);
             setSending(true);
             try {
+              // Único camino de creación: REST crea el Alert en DB y emite
+              // 'emergency_alert' al admin (ver clientController). Antes
+              // también se emitía por socket, duplicando el registro.
               await sendEmergencyAlert({
                 message: message || undefined,
                 latitude: location?.latitude,
                 longitude: location?.longitude,
               });
-              sendEmergency(location?.latitude, location?.longitude, message);
               setSent(true);
             } catch {
               Alert.alert('Error', 'No se pudo enviar la alerta. Intentá de nuevo.');

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { securityRegister, getNeighborhoods } from '../../services/api';
+import { createSecurityStaff, getNeighborhoods } from '../../services/api';
 import { updateSecurityStaff } from '../../services/api';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
@@ -82,7 +82,7 @@ export default function RegisterSecurityScreen({ navigation }) {
 
     setLoading(true);
     try {
-      const { data } = await securityRegister(formData);
+      const { data } = await createSecurityStaff(formData);
 
       if (neighborhoodId || shiftStart || salary || form.contact) {
         const updates = {};

@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, RefreshControl, Dimensions,
+  Alert, RefreshControl, Dimensions, Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useKiosk } from '../../context/KioskContext';
-import { getSecurityStaff, getNeighborhoods, getAlerts } from '../../services/api';
+import {
+  getSecurityStaff, getNeighborhoods, getAlerts,
+  getKioskState, setKioskState,
+} from '../../services/api';
 import { getSocket } from '../../services/socket';
 import { COLORS } from '../../config/constants';
 
@@ -45,6 +48,11 @@ export default function AdminDashboardScreen({ navigation }) {
   const [stats, setStats] = useState({ total: 0, active: 0, neighborhoods: 0, alerts: 0 });
   const [refreshing, setRefreshing] = useState(false);
 
+  // Estado global del kiosco de acceso (abierto/cerrado), persistido en
+  // backend — independiente de "activar modo escáner" (que solo bloquea
+  // ESTE dispositivo en la pantalla de escaneo).
+  const [kiosk, setKiosk] = useState({ isOpen: false, updatedByAdminName: null, loading: true });
+
   function confirmActivateKiosk() {
     Alert.alert(
       'Activar modo escáner',
@@ -56,12 +64,49 @@ export default function AdminDashboardScreen({ navigation }) {
     );
   }
 
+  function confirmToggleKiosk(nextOpen) {
+    Alert.alert(
+      nextOpen ? 'Abrir kiosco' : 'Cerrar kiosco',
+      nextOpen
+        ? 'Los dispositivos en modo escáner van a empezar a aceptar reconocimiento facial en la puerta de acceso.'
+        : 'Los dispositivos en modo escáner van a dejar de escanear hasta que vuelvas a abrirlo.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: nextOpen ? 'Abrir' : 'Cerrar', onPress: () => toggleKiosk(nextOpen) },
+      ]
+    );
+  }
+
+  async function toggleKiosk(nextOpen) {
+    setKiosk((p) => ({ ...p, loading: true }));
+    try {
+      const { data } = await setKioskState(nextOpen);
+      setKiosk((p) => ({ ...p, isOpen: data.isOpen, loading: false }));
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.error || 'No se pudo actualizar el estado del kiosco');
+      setKiosk((p) => ({ ...p, loading: false }));
+    }
+  }
+
+  async function loadKioskState() {
+    try {
+      const { data } = await getKioskState();
+      setKiosk({ isOpen: data.isOpen, updatedByAdminName: data.updatedByAdminName, loading: false });
+    } catch {
+      setKiosk((p) => ({ ...p, loading: false }));
+    }
+  }
+
   useEffect(() => {
     loadStats();
+    loadKioskState();
     setupSocket();
     // Recargar stats cada vez que la pantalla vuelve a estar en foco
     // (cubre el caso de volver desde AdminAlerts después de resolver alertas)
-    const unsub = navigation.addListener('focus', loadStats);
+    const unsub = navigation.addListener('focus', () => {
+      loadStats();
+      loadKioskState();
+    });
     return unsub;
   }, [navigation]);
 
@@ -96,7 +141,7 @@ export default function AdminDashboardScreen({ navigation }) {
 
   async function onRefresh() {
     setRefreshing(true);
-    await loadStats();
+    await Promise.all([loadStats(), loadKioskState()]);
     setRefreshing(false);
   }
 
@@ -150,6 +195,40 @@ export default function AdminDashboardScreen({ navigation }) {
         </TouchableOpacity>
       )}
 
+      {/* ── Estado del kiosco de acceso ── */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Kiosco de acceso</Text>
+        <View style={[styles.kioskCard, kiosk.isOpen ? styles.kioskCardOpen : styles.kioskCardClosed]}>
+          <View style={styles.kioskCardLeft}>
+            <Ionicons
+              name={kiosk.isOpen ? 'lock-open-outline' : 'lock-closed-outline'}
+              size={22}
+              color={kiosk.isOpen ? COLORS.success : COLORS.danger}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.kioskCardTitle}>
+                {kiosk.isOpen ? 'Kiosco abierto' : 'Kiosco cerrado'}
+              </Text>
+              <Text style={styles.kioskCardSub}>
+                {kiosk.isOpen
+                  ? 'Los escáneres de acceso están habilitados'
+                  : 'Los escáneres de acceso no van a registrar entradas/salidas'}
+              </Text>
+              {kiosk.updatedByAdminName && (
+                <Text style={styles.kioskCardMeta}>Último cambio: {kiosk.updatedByAdminName}</Text>
+              )}
+            </View>
+          </View>
+          <Switch
+            value={kiosk.isOpen}
+            onValueChange={confirmToggleKiosk}
+            disabled={kiosk.loading}
+            trackColor={{ false: COLORS.surfaceBorder, true: COLORS.success }}
+            thumbColor={COLORS.white}
+          />
+        </View>
+      </View>
+
       {/* ── Resumen ── */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Resumen</Text>
@@ -177,6 +256,7 @@ export default function AdminDashboardScreen({ navigation }) {
           <QuickAction icon="wallet-outline"     label="Finanzas"      color="#a78bfa"        onPress={() => navigation.navigate('Finances')} />
           <QuickAction icon="bar-chart-outline"  label="Estadísticas"  color="#34d399"        onPress={() => navigation.navigate('Statistics')} />
           <QuickAction icon="scan-outline"       label="Modo escáner"  color={COLORS.info}    onPress={confirmActivateKiosk} />
+          <QuickAction icon="shield-checkmark-outline" label="Nuevo admin" color="#60a5fa"    onPress={() => navigation.navigate('RegisterAdmin')} />
         </View>
       </View>
     </ScrollView>
@@ -227,6 +307,22 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5, textTransform: 'uppercase',
     marginBottom: 14,
   },
+
+  // Kiosco de acceso
+  kioskCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: COLORS.surface,
+    borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: COLORS.surfaceBorder,
+    borderLeftWidth: 3,
+    gap: 12,
+  },
+  kioskCardOpen:   { borderLeftColor: COLORS.success },
+  kioskCardClosed: { borderLeftColor: COLORS.danger },
+  kioskCardLeft:   { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  kioskCardTitle:  { fontSize: 14, fontWeight: '700', color: COLORS.white },
+  kioskCardSub:    { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
+  kioskCardMeta:   { fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 4 },
 
   // Stats grid (2 columnas)
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },

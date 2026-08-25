@@ -5,12 +5,16 @@ const adminController = require('../controllers/adminController');
 
 router.use(authenticate, requireAdmin);
 
+// Administradores
+router.post('/admins', adminController.createAdmin);
+
 // Barrios
 router.get('/neighborhoods', adminController.getNeighborhoods);
 router.post('/neighborhoods', adminController.createNeighborhood);
 router.put('/neighborhoods/:id', adminController.updateNeighborhood);
 
 // Guardias
+router.post('/security', upload.single('profilePhoto'), adminController.createSecurityStaff);
 router.get('/security', adminController.getSecurityStaff);
 router.get('/security/:id', adminController.getSecurityProfile);
 router.put('/security/:id', adminController.updateSecurityStaff);

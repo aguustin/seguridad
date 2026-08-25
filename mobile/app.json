@@ -20,7 +20,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Seguridad Barrios necesita la cámara para reconocimiento facial",
         "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para el seguimiento de seguridad.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Necesitamos tu ubicación en segundo plano para el seguimiento continuo."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Necesitamos tu ubicación en segundo plano para el seguimiento continuo de guardias en turno.",
+        "UIBackgroundModes": ["location"]
       }
     },
     "android": {
@@ -36,6 +37,8 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "android.permission.CAMERA",
@@ -45,7 +48,14 @@
       ]
     },
     "plugins": [
-      "expo-location",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Necesitamos tu ubicación en segundo plano para el seguimiento continuo de guardias en turno.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
       [
         "react-native-vision-camera",
         {

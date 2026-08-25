@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const {
+  Admin,
   SecurityStaff,
   Client,
   Neighborhood,
@@ -9,7 +10,29 @@ const {
 } = require('../models');
 const { sendWakeUpAlert, sendPushNotification } = require('../services/notificationService');
 const { makeUserJoinRoom, makeUserLeaveRoom } = require('../services/socketService');
+const faceService = require('../services/faceService');
 const path = require('path');
+
+// ── ADMINISTRADORES ────────────────────────────────────────────────────────
+// Alta de administradores adicionales, solo accesible para un admin ya
+// autenticado (ver middleware requireAdmin en routes/admin.js). El primer
+// admin del sistema se crea vía POST /api/auth/admin/register (público solo
+// mientras no exista ninguno — ver authController.adminRegister).
+exports.createAdmin = async (req, res) => {
+  try {
+    const { username, password, name } = req.body;
+    if (!username || !password || !name) {
+      return res.status(400).json({ error: 'Usuario, contraseña y nombre son obligatorios' });
+    }
+    const admin = await Admin.create({ username, password, name });
+    res.status(201).json({ id: admin.id, username: admin.username, name: admin.name });
+  } catch (err) {
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ error: 'El usuario ya existe' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+};
 
 // ── BARRIOS ────────────────────────────────────────────────────────────────
 exports.getNeighborhoods = async (req, res) => {
@@ -43,6 +66,54 @@ exports.updateNeighborhood = async (req, res) => {
 };
 
 // ── GUARDIAS ───────────────────────────────────────────────────────────────
+// Alta de guardias (antes era pública en authController.securityRegister —
+// ver disclosure en la conversación: ahora requiere admin autenticado).
+// Misma lógica de siempre: extrae el descriptor facial de la foto de perfil
+// mediante faceService antes de crear el registro.
+exports.createSecurityStaff = async (req, res) => {
+  try {
+    const { firstName, lastName, documentNumber, age } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Se requiere foto de perfil' });
+    }
+
+    const profilePhotoPath = req.file.path
+      ? path.relative(path.join(__dirname, '../../'), req.file.path)
+      : null;
+
+    const imageBuffer =
+      req.file.buffer || require('fs').readFileSync(req.file.path);
+
+    const descriptor = await faceService.extractDescriptor(imageBuffer);
+
+    if (!descriptor) {
+      return res.status(400).json({
+        error: 'No se detectó un rostro válido en la foto de perfil'
+      });
+    }
+
+    const staff = await SecurityStaff.create({
+      firstName,
+      lastName,
+      documentNumber,
+      age: parseInt(age),
+      profilePhoto: profilePhotoPath,
+      faceDescriptor: faceService.descriptorToJson(descriptor),
+    });
+
+    res.status(201).json({
+      message: 'Guardia registrado correctamente',
+      staff
+    });
+  } catch (err) {
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ error: 'Ya existe un guardia con ese documento' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.getSecurityStaff = async (req, res) => {
   try {
     const { neighborhoodId } = req.query;

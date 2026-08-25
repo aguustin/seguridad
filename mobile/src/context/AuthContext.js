@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '../services/api';
+import { stopBackgroundLocationTracking } from '../services/backgroundLocation';
 
 const AuthContext = createContext(null);
 
@@ -39,13 +40,15 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
-    // Si es guardia, notificar al backend para limpiar isOperator
+    // Si es guardia, notificar al backend para limpiar isOperator y frenar
+    // el tracking de ubicación en background que haya quedado activo.
     try {
       const storedUser = await SecureStore.getItemAsync('authUser');
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
         if (parsed.role === 'security') {
           await api.post('/security/logout').catch(() => {});
+          await stopBackgroundLocationTracking().catch(() => {});
         }
       }
     } catch {}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, RefreshControl, Image, Modal, TextInput,
+  Alert, RefreshControl, Image, Modal, TextInput, AppState,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
@@ -11,6 +11,7 @@ import {
 } from '../../services/api';
 import { getSocket, updateLocation } from '../../services/socket';
 import * as Location from 'expo-location';
+import { startBackgroundLocationTracking, stopBackgroundLocationTracking } from '../../services/backgroundLocation';
 import { COLORS, UPLOADS_URL } from '../../config/constants';
 
 export default function SecurityDashboardScreen({ navigation }) {
@@ -29,12 +30,58 @@ export default function SecurityDashboardScreen({ navigation }) {
   // Check-in pendiente
   const [checkinSession, setCheckinSession] = useState(null); // sessionId pendiente
 
+  // Suscripción activa de watchPositionAsync (foreground). Se guarda en un
+  // ref porque hay que poder frenarla al pasar a background, y un ref no
+  // dispara re-render como haría un useState.
+  const locationWatcherRef = useRef(null);
+  // Si el permiso de background ya fue concedido — se pide una sola vez, no
+  // en cada transición de estado (para no repetir el diálogo del sistema).
+  const backgroundPermissionRef = useRef(false);
+
   useEffect(() => {
     loadData();
-    startLocation();
+    startForegroundTracking();
     const cleanup = setupSocket();
-    return cleanup;
+
+    // Solo una fuente de tracking activa según el estado de la app:
+    // foreground → watchPositionAsync (socket); background →
+    // startLocationUpdatesAsync (REST). Nunca las dos al mismo tiempo.
+    const appStateSub = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      cleanup?.();
+      appStateSub.remove();
+      stopForegroundTracking();
+    };
   }, []);
+
+  async function handleAppStateChange(nextState) {
+    if (nextState === 'background') {
+      // Pasa a background: frenar el watcher foreground primero (para que
+      // no quede activo ni un instante junto con el de background) y
+      // recién ahí arrancar el tracking en background, si hay permiso.
+      stopForegroundTracking();
+      if (backgroundPermissionRef.current) {
+        try {
+          await startBackgroundLocationTracking();
+        } catch (err) {
+          console.error('[SecurityDashboard] Error iniciando tracking en background:', err.message);
+        }
+      }
+    } else if (nextState === 'active') {
+      // Vuelve a foreground: frenar background primero y recién ahí
+      // retomar el watcher foreground — mismo orden "frenar antes de
+      // arrancar" para evitar que ambos convivan.
+      try {
+        await stopBackgroundLocationTracking();
+      } catch (err) {
+        console.error('[SecurityDashboard] Error deteniendo tracking en background:', err.message);
+      }
+      await startForegroundTracking();
+    }
+    // 'inactive' (iOS, transiciones momentáneas como el centro de control)
+    // se ignora a propósito: no es un cambio real de foreground/background.
+  }
 
   function setupSocket() {
     const socket = getSocket();
@@ -82,13 +129,38 @@ export default function SecurityDashboardScreen({ navigation }) {
     };
   }
 
-  async function startLocation() {
+  async function startForegroundTracking() {
+    if (locationWatcherRef.current) return; // ya está activo, no duplicar
+
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return;
-    Location.watchPositionAsync(
+
+    locationWatcherRef.current = await Location.watchPositionAsync(
       { accuracy: Location.Accuracy.Balanced, timeInterval: 15000, distanceInterval: 20 },
       (loc) => updateLocation(loc.coords.latitude, loc.coords.longitude)
     );
+
+    // El permiso de background se pide una única vez (la primera vez que
+    // arranca el tracking foreground), no en cada transición de estado —
+    // en Android 10+/iOS el sistema lo pide en un segundo paso, separado
+    // del foreground. Si el guardia no lo otorga, el tracking en
+    // background simplemente no se activa más adelante; el foreground
+    // sigue funcionando igual, no es bloqueante.
+    if (!backgroundPermissionRef.current) {
+      try {
+        const bg = await Location.requestBackgroundPermissionsAsync();
+        backgroundPermissionRef.current = bg.status === 'granted';
+      } catch (err) {
+        console.error('[SecurityDashboard] No se pudo pedir permiso de background:', err.message);
+      }
+    }
+  }
+
+  function stopForegroundTracking() {
+    if (locationWatcherRef.current) {
+      locationWatcherRef.current.remove();
+      locationWatcherRef.current = null;
+    }
   }
 
   async function loadData() {

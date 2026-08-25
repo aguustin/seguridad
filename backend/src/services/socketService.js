@@ -106,11 +106,22 @@ function initSocket(io) {
 
     // === UBICACIÓN EN TIEMPO REAL ===
     socket.on('update_location', async ({ latitude, longitude }) => {
+      const { LocationPoint } = require('../models');
+
       if (role === 'security') {
         await SecurityStaff.update(
           { lastLatitude: latitude, lastLongitude: longitude, lastLocationUpdate: new Date() },
           { where: { id: userId } }
         );
+        // Historial de puntos GPS (aditivo — no reemplaza lastLatitude/
+        // lastLongitude). Se guarda en un try/catch propio para que un
+        // problema acá nunca rompa la actualización de "última posición"
+        // ni el evento realtime, que es lo que hoy usa el mapa en vivo.
+        try {
+          await LocationPoint.create({ entityType: 'security', securityStaffId: userId, latitude, longitude });
+        } catch (err) {
+          console.error('[Socket] Error guardando LocationPoint (security):', err.message);
+        }
         io.to('role:admin').emit('guard_location_update', {
           guardId: userId,
           neighborhoodId,
@@ -123,6 +134,11 @@ function initSocket(io) {
           { lastLatitude: latitude, lastLongitude: longitude, lastLocationUpdate: new Date() },
           { where: { id: userId } }
         );
+        try {
+          await LocationPoint.create({ entityType: 'client', clientId: userId, latitude, longitude });
+        } catch (err) {
+          console.error('[Socket] Error guardando LocationPoint (client):', err.message);
+        }
         io.to('role:admin').emit('client_location_update', {
           clientId: userId,
           latitude,
@@ -137,22 +153,12 @@ function initSocket(io) {
       socket.join(`client_chat:${clientId}`);
     });
 
-    // === EMERGENCIA DE CLIENTE ===
-    socket.on('client_emergency', async ({ latitude, longitude, message: msg }) => {
-      const { Alert } = require('../models');
-      const client = await Client.findByPk(userId);
-      const alertData = {
-        type: 'client_emergency',
-        title: '🚨 EMERGENCIA',
-        message: msg || `${client?.firstName} ${client?.lastName} necesita ayuda`,
-        senderId: userId,
-        senderType: 'client',
-        clientLatitude: latitude,
-        clientLongitude: longitude,
-      };
-      const alert = await Alert.create(alertData);
-      io.to('role:admin').emit('emergency_alert', { ...alertData, id: alert.id, client });
-    });
+    // La emergencia de cliente se crea y emite exclusivamente por REST
+    // (ver clientController.sendEmergencyAlert) — antes también existía acá
+    // un handler 'client_emergency' que duplicaba la creación del Alert y
+    // el emit de 'emergency_alert', generando 2 registros por cada botón de
+    // pánico. Se eliminó: REST ya crea el Alert y emite el evento a
+    // 'role:admin' con el io inyectado en req.app.
 
     // === CONFIRMACIÓN DE CHECK-IN (guardia) ===
     socket.on('checkin_confirm', ({ sessionId }) => {

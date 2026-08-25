@@ -1,5 +1,49 @@
-const { SecurityStaff, AttendanceRecord, Message, Alert } = require('../models');
+const { SecurityStaff, AttendanceRecord, Message, Alert, PatrolRoute, PatrolSession } = require('../models');
 const checkinService = require('../services/checkinService');
+
+// ── UBICACIÓN (tracking en background) ─────────────────────────────────────
+// El tracking en foreground manda la ubicación por Socket.IO (ver
+// socketService.js → 'update_location'). El task de background
+// (expo-task-manager) corre en un contexto headless/aislado que no puede
+// depender de que exista un socket ya conectado, así que manda la
+// ubicación por REST a este endpoint — misma lógica exacta que el socket:
+// actualiza lastLatitude/lastLongitude/lastLocationUpdate, guarda el punto
+// en LocationPoint, y emite el mismo evento realtime para el mapa en vivo.
+exports.updateLocation = async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return res.status(400).json({ error: 'latitude y longitude son requeridos' });
+    }
+
+    await SecurityStaff.update(
+      { lastLatitude: latitude, lastLongitude: longitude, lastLocationUpdate: new Date() },
+      { where: { id: req.user.id } }
+    );
+
+    const { LocationPoint } = require('../models');
+    try {
+      await LocationPoint.create({ entityType: 'security', securityStaffId: req.user.id, latitude, longitude });
+    } catch (err) {
+      console.error('[Security] Error guardando LocationPoint (background):', err.message);
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to('role:admin').emit('guard_location_update', {
+        guardId: req.user.id,
+        neighborhoodId: req.user.neighborhoodId,
+        latitude,
+        longitude,
+        timestamp: new Date(),
+      });
+    }
+
+    res.json({ message: 'Ubicación actualizada' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 exports.getMyProfile = async (req, res) => {
   try {
@@ -186,6 +230,60 @@ exports.confirmCheckin = async (req, res) => {
     }
     checkinService.confirmCheckin(req.user.id, sessionId || current);
     res.json({ message: 'Check-in confirmado' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ── RONDAS (inicio/fin de sesión) ───────────────────────────────────────────
+// Solo start/end acá — sin checkpoints, sin validación GPS, sin sockets
+// (fuera de alcance de esta etapa).
+
+exports.startPatrol = async (req, res) => {
+  try {
+    const { patrolRouteId } = req.body;
+    if (!patrolRouteId) {
+      return res.status(400).json({ error: 'patrolRouteId es obligatorio' });
+    }
+
+    const route = await PatrolRoute.findByPk(patrolRouteId);
+    if (!route || !route.isActive) {
+      return res.status(400).json({ error: 'La ruta de ronda indicada no existe o no está activa' });
+    }
+
+    const existing = await PatrolSession.findOne({
+      where: { securityStaffId: req.user.id, status: 'in_progress' },
+    });
+    if (existing) {
+      return res.status(400).json({ error: 'Ya tenés una ronda en curso. Finalizala antes de iniciar otra.' });
+    }
+
+    const session = await PatrolSession.create({
+      securityStaffId: req.user.id,
+      patrolRouteId,
+      startedAt: new Date(),
+      status: 'in_progress',
+    });
+
+    res.status(201).json(session);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.endPatrol = async (req, res) => {
+  try {
+    // No hace falta pedir el id de la sesión: un guardia solo puede tener
+    // una ronda in_progress a la vez (garantizado por startPatrol).
+    const session = await PatrolSession.findOne({
+      where: { securityStaffId: req.user.id, status: 'in_progress' },
+    });
+    if (!session) {
+      return res.status(404).json({ error: 'No tenés ninguna ronda en curso' });
+    }
+
+    await session.update({ endedAt: new Date(), status: 'completed' });
+    res.json(session);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

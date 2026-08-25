@@ -23,9 +23,9 @@ import FinancesScreen from '../screens/admin/FinancesScreen';
 import StatisticsScreen from '../screens/admin/StatisticsScreen';
 import RegisterClientScreen from '../screens/admin/RegisterClientScreen';
 import RegisterSecurityScreen from '../screens/admin/RegisterSecurityScreen';
+import RegisterAdminScreen from '../screens/admin/RegisterAdminScreen';
 
 // Security
-import SecurityRegisterScreen from '../screens/security/SecurityRegisterScreen';
 import FaceScanScreen from '../screens/security/FaceScanScreen';
 import SecurityDashboardScreen from '../screens/security/SecurityDashboardScreen';
 import SecurityChatScreen from '../screens/security/SecurityChatScreen';
@@ -57,7 +57,6 @@ function AuthNavigator() {
       <Stack.Screen name="ClientLogin" component={ClientLoginScreen} />
       <Stack.Screen name="SecurityFaceScan" component={FaceScanScreen} />
       <Stack.Screen name="SecurityLogin" component={FaceScanScreen} />
-      <Stack.Screen name="SecurityRegister" component={SecurityRegisterScreen} />
     </Stack.Navigator>
   );
 }
@@ -77,6 +76,7 @@ function AdminNavigator() {
       <Stack.Screen name="RegisterClient" component={RegisterClientScreen} options={{ title: 'Registrar cliente' }} />
       <Stack.Screen name="Neighborhoods" component={require('../screens/admin/NeighborhoodsScreen').default} options={{ title: 'Barrios' }} />
       <Stack.Screen name="RegisterSecurity" component={RegisterSecurityScreen} options={{ title: 'Registrar guardia' }} />
+      <Stack.Screen name="RegisterAdmin" component={RegisterAdminScreen} options={{ title: 'Nuevo administrador' }} />
     </Stack.Navigator>
   );
 }

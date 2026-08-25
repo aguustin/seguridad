@@ -17,6 +17,8 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/security', require('./routes/security'));
 app.use('/api/client', require('./routes/client'));
+app.use('/api/kiosk', require('./routes/kiosk'));
+app.use('/api/admin/patrol', require('./routes/patrol'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 

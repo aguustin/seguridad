@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   getMyProfile, getActiveColleagues, getMyAlerts,
   sendGuardAlert, resolveGuardAlert, getMyActiveAlert, confirmCheckin,
+  getMyAssignments, completeAssignment,
 } from '../../services/api';
 import { getSocket, updateLocation } from '../../services/socket';
 import * as Location from 'expo-location';
@@ -20,6 +21,7 @@ export default function SecurityDashboardScreen({ navigation }) {
   const [colleagues, setColleagues] = useState([]);
   const [alerts, setAlerts]         = useState([]);
   const [activeAlert, setActiveAlert] = useState(null); // alerta del guardia en curso
+  const [assignments, setAssignments] = useState([]); // tareas asignadas por el admin
   const [refreshing, setRefreshing]   = useState(false);
 
   // Modal enviar alerta
@@ -92,6 +94,19 @@ export default function SecurityDashboardScreen({ navigation }) {
       Alert.alert('🚨 ' + a.title, a.message);
     });
 
+    socket.on('assignment_created', (a) => {
+      setAssignments((p) => [a, ...p]);
+      Alert.alert('📋 Nueva tarea asignada', a.title);
+    });
+
+    // El admin puede cancelar una tarea que este guardia todavía no
+    // completó — sin este listener, la tarea seguía apareciendo como
+    // pendiente en el dashboard y "Marcar completada" fallaba con un 400
+    // ("ya no está pendiente") sin que el guardia entendiera por qué.
+    socket.on('assignment_cancelled', ({ id }) => {
+      setAssignments((p) => p.map((a) => a.id === id ? { ...a, status: 'cancelled' } : a));
+    });
+
     socket.on('guard_status_change', ({ guardId, status }) => {
       if (status === 'online') loadData();
       else setColleagues((p) => p.filter((c) => c.id !== guardId));
@@ -123,6 +138,8 @@ export default function SecurityDashboardScreen({ navigation }) {
 
     return () => {
       socket.off('admin_alert');
+      socket.off('assignment_created');
+      socket.off('assignment_cancelled');
       socket.off('guard_status_change');
       socket.off('checkin_request');
       socket.off('operator_assigned');
@@ -165,18 +182,29 @@ export default function SecurityDashboardScreen({ navigation }) {
 
   async function loadData() {
     try {
-      const [p, c, a, aa] = await Promise.all([
+      const [p, c, a, aa, as] = await Promise.all([
         getMyProfile(),
         getActiveColleagues(),
         getMyAlerts(),
         getMyActiveAlert(),
+        getMyAssignments(),
       ]);
       setProfile(p.data);
       setColleagues(c.data.filter((x) => x.id !== user?.id));
       setAlerts(a.data.slice(0, 5));
       setActiveAlert(aa.data);
+      setAssignments(as.data);
     } catch {}
     finally { setRefreshing(false); }
+  }
+
+  async function handleCompleteAssignment(id) {
+    try {
+      await completeAssignment(id);
+      setAssignments((p) => p.map((a) => a.id === id ? { ...a, status: 'completed' } : a));
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.error || 'No se pudo marcar como completada');
+    }
   }
 
   async function handleSendAlert() {
@@ -323,6 +351,35 @@ export default function SecurityDashboardScreen({ navigation }) {
           </TouchableOpacity>
         )}
 
+        {/* Tareas asignadas por el admin (pendientes) */}
+        {assignments.filter((a) => a.status === 'pending').length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Tareas asignadas</Text>
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>{assignments.filter((a) => a.status === 'pending').length}</Text>
+              </View>
+            </View>
+            {assignments.filter((a) => a.status === 'pending').map((a) => (
+              <View key={a.id} style={styles.assignmentCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.assignmentTitle}>{a.title}</Text>
+                  {!!a.description && (
+                    <Text style={styles.assignmentDesc} numberOfLines={2}>{a.description}</Text>
+                  )}
+                </View>
+                <TouchableOpacity
+                  style={styles.completeBtn}
+                  onPress={() => handleCompleteAssignment(a.id)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={22} color={COLORS.success} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Alertas del admin */}
         {alerts.length > 0 && (
           <View style={styles.section}>
@@ -387,6 +444,18 @@ export default function SecurityDashboardScreen({ navigation }) {
                 <Ionicons name="chatbubbles-outline" size={24} color={COLORS.success} />
               </View>
               <Text style={styles.actionLabel}>Chat</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Patrol')}>
+              <View style={[styles.actionIcon, { backgroundColor: COLORS.accent + '25' }]}>
+                <Ionicons name="walk-outline" size={24} color={COLORS.accent} />
+              </View>
+              <Text style={styles.actionLabel}>Ronda</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Visits')}>
+              <View style={[styles.actionIcon, { backgroundColor: COLORS.info + '18' }]}>
+                <Ionicons name="people-outline" size={24} color={COLORS.info} />
+              </View>
+              <Text style={styles.actionLabel}>Visitas</Text>
             </TouchableOpacity>
             {isOperator && (
               <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('OperatorDashboard')}>
@@ -526,6 +595,16 @@ const styles = StyleSheet.create({
   sectionTitle:  { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.45)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 },
   countBadge:    { backgroundColor: COLORS.accent, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   countText:     { fontSize: 12, fontWeight: '800', color: COLORS.primary },
+
+  assignmentCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: COLORS.surface, borderRadius: 12, padding: 14,
+    marginBottom: 8, borderWidth: 1, borderColor: COLORS.surfaceBorder,
+    borderLeftWidth: 3, borderLeftColor: COLORS.info,
+  },
+  assignmentTitle: { fontSize: 13, fontWeight: '700', color: COLORS.white },
+  assignmentDesc:  { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
+  completeBtn:     { padding: 2 },
 
   alertCard: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

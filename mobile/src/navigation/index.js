@@ -24,12 +24,24 @@ import StatisticsScreen from '../screens/admin/StatisticsScreen';
 import RegisterClientScreen from '../screens/admin/RegisterClientScreen';
 import RegisterSecurityScreen from '../screens/admin/RegisterSecurityScreen';
 import RegisterAdminScreen from '../screens/admin/RegisterAdminScreen';
+import PatrolSessionsScreen from '../screens/admin/PatrolSessionsScreen';
+import PatrolSessionDetailScreen from '../screens/admin/PatrolSessionDetailScreen';
+import PatrolRoutesScreen from '../screens/admin/PatrolRoutesScreen';
+import PatrolRouteCheckpointsScreen from '../screens/admin/PatrolRouteCheckpointsScreen';
+import AdminVisitsScreen from '../screens/admin/AdminVisitsScreen';
+import AssignmentsScreen from '../screens/admin/AssignmentsScreen';
+import ControlCenterScreen from '../screens/admin/ControlCenterScreen';
 
 // Security
 import FaceScanScreen from '../screens/security/FaceScanScreen';
 import SecurityDashboardScreen from '../screens/security/SecurityDashboardScreen';
 import SecurityChatScreen from '../screens/security/SecurityChatScreen';
 import OperatorDashboardScreen from '../screens/security/OperatorDashboardScreen';
+import PatrolScreen from '../screens/security/PatrolScreen';
+import PatrolHistoryScreen from '../screens/security/PatrolHistoryScreen';
+import PatrolHistoryDetailScreen from '../screens/security/PatrolHistoryDetailScreen';
+import VisitsScreen from '../screens/security/VisitsScreen';
+import VisitHistoryScreen from '../screens/security/VisitHistoryScreen';
 
 // Client
 import ClientLoginScreen from '../screens/client/ClientLoginScreen';
@@ -77,6 +89,13 @@ function AdminNavigator() {
       <Stack.Screen name="Neighborhoods" component={require('../screens/admin/NeighborhoodsScreen').default} options={{ title: 'Barrios' }} />
       <Stack.Screen name="RegisterSecurity" component={RegisterSecurityScreen} options={{ title: 'Registrar guardia' }} />
       <Stack.Screen name="RegisterAdmin" component={RegisterAdminScreen} options={{ title: 'Nuevo administrador' }} />
+      <Stack.Screen name="PatrolSessions" component={PatrolSessionsScreen} options={{ title: 'Rondas realizadas' }} />
+      <Stack.Screen name="PatrolSessionDetail" component={PatrolSessionDetailScreen} options={{ title: 'Detalle de ronda' }} />
+      <Stack.Screen name="PatrolRoutes" component={PatrolRoutesScreen} options={{ title: 'Rutas de ronda' }} />
+      <Stack.Screen name="PatrolRouteCheckpoints" component={PatrolRouteCheckpointsScreen} options={{ title: 'Checkpoints' }} />
+      <Stack.Screen name="AdminVisits" component={AdminVisitsScreen} options={{ title: 'Visitas' }} />
+      <Stack.Screen name="Assignments" component={AssignmentsScreen} options={{ title: 'Asignaciones' }} />
+      <Stack.Screen name="ControlCenter" component={ControlCenterScreen} options={{ title: 'Centro de Control' }} />
     </Stack.Navigator>
   );
 }
@@ -89,6 +108,11 @@ function SecurityNavigator() {
       <Stack.Screen name="SecurityAttendance" component={require('../screens/security/MyAttendanceScreen').default} options={{ title: 'Mi historial' }} />
       <Stack.Screen name="SecurityFaceScan" component={FaceScanScreen} options={{ headerShown: false }} />
       <Stack.Screen name="OperatorDashboard" component={OperatorDashboardScreen} options={{ title: 'Estado de guardias' }} />
+      <Stack.Screen name="Patrol" component={PatrolScreen} options={{ title: 'Ronda' }} />
+      <Stack.Screen name="PatrolHistory" component={PatrolHistoryScreen} options={{ title: 'Historial de rondas' }} />
+      <Stack.Screen name="PatrolHistoryDetail" component={PatrolHistoryDetailScreen} options={{ title: 'Detalle de ronda' }} />
+      <Stack.Screen name="Visits" component={VisitsScreen} options={{ title: 'Visitas' }} />
+      <Stack.Screen name="VisitHistory" component={VisitHistoryScreen} options={{ title: 'Historial de visitas' }} />
     </Stack.Navigator>
   );
 }

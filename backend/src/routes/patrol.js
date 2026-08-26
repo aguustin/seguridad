@@ -16,4 +16,8 @@ router.post('/routes/:id/checkpoints', patrolController.createCheckpoint);
 router.put('/checkpoints/:id', patrolController.updateCheckpoint);
 router.delete('/checkpoints/:id', patrolController.deleteCheckpoint);
 
+// Rondas realizadas (vista administrativa, con filtros)
+router.get('/sessions', patrolController.getSessions);
+router.get('/sessions/:id', patrolController.getSessionDetail);
+
 module.exports = router;

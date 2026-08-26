@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { SecurityStaff, Client } = require('../models');
 const checkinService = require('./checkinService');
+const { isStillActive } = require('../middleware/auth');
 
 // Mapa de usuarios conectados: userId -> socketId
 const connectedUsers = new Map();
@@ -31,12 +32,17 @@ function makeUserLeaveRoom(userId, room) {
 
 function initSocket(io) {
   _io = io;
-  // Autenticación del socket via token JWT
-  io.use((socket, next) => {
+  // Autenticación del socket via token JWT — misma revalidación de
+  // isActive que REST (middleware/auth.js): una cuenta desactivada no
+  // puede ni siquiera abrir la conexión, aunque su token siga vigente.
+  io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error('No token'));
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (!(await isStillActive(decoded))) {
+        return next(new Error('Cuenta inactiva'));
+      }
       socket.user = decoded;
       next();
     } catch {
@@ -63,8 +69,10 @@ function initSocket(io) {
     // Marcar guardia como activo
     if (role === 'security') {
       await SecurityStaff.update({ isOnDuty: true }, { where: { id: userId } });
-      // Notificar al barrio
-      io.to(`neighborhood:${neighborhoodId}`).emit('guard_status_change', {
+      // Notificar al barrio y también a los admins (el JWT de admin no
+      // lleva neighborhoodId, así que su socket nunca está en la room de
+      // barrio — sin esto, un admin nunca se enteraba de este evento).
+      io.to([`neighborhood:${neighborhoodId}`, 'role:admin']).emit('guard_status_change', {
         guardId: userId,
         status: 'online',
       });
@@ -183,7 +191,7 @@ function initSocket(io) {
 
       if (role === 'security') {
         await SecurityStaff.update({ isOnDuty: false }, { where: { id: userId } });
-        io.to(`neighborhood:${neighborhoodId}`).emit('guard_status_change', {
+        io.to([`neighborhood:${neighborhoodId}`, 'role:admin']).emit('guard_status_change', {
           guardId: userId,
           status: 'offline',
         });

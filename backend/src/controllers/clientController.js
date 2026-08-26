@@ -46,7 +46,10 @@ exports.getChatMessages = async (req, res) => {
 exports.sendEmergencyAlert = async (req, res) => {
   try {
     const { message, latitude, longitude } = req.body;
-    const client = await Client.findByPk(req.user.id, { attributes: ['firstName', 'lastName'] });
+    const client = await Client.findByPk(req.user.id, {
+      attributes: ['firstName', 'lastName'],
+      include: [{ association: 'neighborhood', attributes: ['name'] }],
+    });
 
     const alert = await Alert.create({
       type: 'client_emergency',
@@ -58,12 +61,16 @@ exports.sendEmergencyAlert = async (req, res) => {
       clientLongitude: longitude,
     });
 
-    // Emitir via socket
+    // Emitir via socket. clientName/clientNeighborhood van también acá (no
+    // solo en el REST de getAlerts) para que la notificación en vivo y la
+    // lista recargada muestren siempre lo mismo — antes solo el socket
+    // llevaba el nombre y quedaba desactualizado al refrescar.
     const io = req.app.get('io');
     if (io) {
       io.to('role:admin').emit('emergency_alert', {
         ...alert.toJSON(),
         clientName: `${client.firstName} ${client.lastName}`,
+        clientNeighborhood: client.neighborhood?.name || null,
       });
     }
 

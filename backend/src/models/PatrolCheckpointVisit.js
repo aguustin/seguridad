@@ -33,6 +33,19 @@ const PatrolCheckpointVisit = sequelize.define('PatrolCheckpointVisit', {
     allowNull: false,
     defaultValue: DataTypes.NOW,
   },
+}, {
+  indexes: [
+    // Garantiza a nivel de DB que un checkpoint no se registre dos veces en
+    // la misma ronda — el controller ya valida esto con un findOne antes de
+    // crear (ver securityController.registerCheckpointVisit), pero esa
+    // validación por sí sola no cubre dos requests casi simultáneas. Se
+    // define como índice del modelo (no una migración aparte) para que
+    // sequelize.sync({alter:true}) lo cree igual que el resto del esquema.
+    {
+      unique: true,
+      fields: ['patrolSessionId', 'patrolCheckpointId'],
+    },
+  ],
 });
 
 module.exports = PatrolCheckpointVisit;

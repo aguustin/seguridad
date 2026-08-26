@@ -1,6 +1,24 @@
 const jwt = require('jsonwebtoken');
 const { Admin, SecurityStaff, Client } = require('../models');
 
+const MODEL_BY_ROLE = { admin: Admin, security: SecurityStaff, client: Client };
+
+/**
+ * Revalida contra la base que el usuario del token siga existiendo y
+ * activo. El JWT en sí no tiene forma de revocarse antes de su expiración
+ * (hasta 7 días por default) — esto no reemplaza eso, pero cierra el caso
+ * concreto más importante: si un admin desactiva a un guardia/cliente (o se
+ * desactiva un admin), esa cuenta deja de poder usar el token ya emitido en
+ * el próximo request, en vez de seguir funcionando hasta que expire solo.
+ * Reutilizado también por la autenticación de sockets (ver socketService.js).
+ */
+async function isStillActive(decoded) {
+  const Model = MODEL_BY_ROLE[decoded?.role];
+  if (!Model) return false;
+  const record = await Model.findByPk(decoded.id, { attributes: ['id', 'isActive'] });
+  return !!record && record.isActive !== false;
+}
+
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -10,6 +28,9 @@ const authenticate = async (req, res, next) => {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!(await isStillActive(decoded))) {
+      return res.status(401).json({ error: 'Tu cuenta ya no está activa. Iniciá sesión de nuevo.' });
+    }
     req.user = decoded;
     next();
   } catch (err) {
@@ -45,4 +66,4 @@ const requireAdminOrSecurity = (req, res, next) => {
   next();
 };
 
-module.exports = { authenticate, requireAdmin, requireSecurity, requireClient, requireAdminOrSecurity };
+module.exports = { authenticate, requireAdmin, requireSecurity, requireClient, requireAdminOrSecurity, isStillActive };

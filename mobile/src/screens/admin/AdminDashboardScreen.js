@@ -11,23 +11,12 @@ import {
   getKioskState, setKioskState,
 } from '../../services/api';
 import { getSocket } from '../../services/socket';
+import StatCard from '../../components/StatCard';
 import { COLORS } from '../../config/constants';
 
 const SCREEN_W = Dimensions.get('window').width;
 // 2 columnas con padding
 const ACTION_W = (SCREEN_W - 16 * 2 - 12) / 2;
-
-const StatCard = ({ icon, label, value, accent, onPress }) => (
-  <TouchableOpacity
-    style={[styles.statCard, accent && styles.statCardAccent]}
-    onPress={onPress}
-    activeOpacity={0.75}
-  >
-    <Ionicons name={icon} size={20} color={accent ? COLORS.primary : COLORS.accent} />
-    <Text style={[styles.statValue, accent && styles.statValueAccent]}>{value}</Text>
-    <Text style={[styles.statLabel, accent && styles.statLabelAccent]}>{label}</Text>
-  </TouchableOpacity>
-);
 
 const QuickAction = ({ icon, label, color, onPress }) => (
   <TouchableOpacity
@@ -249,6 +238,7 @@ export default function AdminDashboardScreen({ navigation }) {
         <Text style={styles.sectionTitle}>Acciones</Text>
         <View style={styles.actionsGrid}>
           {/*<QuickAction icon="people-outline"     label="Guardias"      color={COLORS.info}    onPress={() => navigation.navigate('SecurityList')} />*/}
+          <QuickAction icon="grid-outline"        label="Centro de Control" color={COLORS.danger} onPress={() => navigation.navigate('ControlCenter')} />
           <QuickAction icon="person-add-outline" label="Nuevo guardia"  color={COLORS.accent}  onPress={() => navigation.navigate('RegisterSecurity')} />
           <QuickAction icon="person-add-outline" label="Nuevo cliente" color={COLORS.success} onPress={() => navigation.navigate('RegisterClient')} />
           <QuickAction icon="map-outline"        label="Mapa en vivo"  color={COLORS.accent}  onPress={() => navigation.navigate('AdminMap')} />
@@ -257,6 +247,10 @@ export default function AdminDashboardScreen({ navigation }) {
           <QuickAction icon="bar-chart-outline"  label="Estadísticas"  color="#34d399"        onPress={() => navigation.navigate('Statistics')} />
           <QuickAction icon="scan-outline"       label="Modo escáner"  color={COLORS.info}    onPress={confirmActivateKiosk} />
           <QuickAction icon="shield-checkmark-outline" label="Nuevo admin" color="#60a5fa"    onPress={() => navigation.navigate('RegisterAdmin')} />
+          <QuickAction icon="walk-outline"        label="Rondas"        color={COLORS.accent}  onPress={() => navigation.navigate('PatrolSessions')} />
+          <QuickAction icon="map-outline"         label="Rutas de ronda" color={COLORS.accent} onPress={() => navigation.navigate('PatrolRoutes')} />
+          <QuickAction icon="people-outline"      label="Visitas"       color={COLORS.info}    onPress={() => navigation.navigate('AdminVisits')} />
+          <QuickAction icon="clipboard-outline"   label="Asignaciones"  color="#f472b6"        onPress={() => navigation.navigate('Assignments')} />
         </View>
       </View>
     </ScrollView>
@@ -324,21 +318,8 @@ const styles = StyleSheet.create({
   kioskCardSub:    { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
   kioskCardMeta:   { fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 4 },
 
-  // Stats grid (2 columnas)
+  // Stats grid (2 columnas) — la tarjeta en sí vive en components/StatCard.js
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  statCard: {
-    flex: 1, minWidth: '45%',
-    backgroundColor: COLORS.surface,
-    borderRadius: 14, padding: 16,
-    alignItems: 'center',
-    borderWidth: 1, borderColor: COLORS.surfaceBorder,
-    gap: 6,
-  },
-  statCardAccent:  { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  statValue:       { fontSize: 30, fontWeight: '900', color: COLORS.white },
-  statValueAccent: { color: COLORS.primary },
-  statLabel:       { fontSize: 12, color: 'rgba(255,255,255,0.45)', fontWeight: '500' },
-  statLabelAccent: { color: 'rgba(0,0,0,0.6)' },
 
   // Actions grid (2 columnas fijas)
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },

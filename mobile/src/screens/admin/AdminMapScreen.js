@@ -311,7 +311,7 @@ export default function AdminMapScreen() {
             </View>
             <Callout tooltip>
               <View style={styles.callout}>
-                <Text style={[styles.calloutName, { color: COLORS.danger }]}>🚨 {a.title}</Text>
+                <Text style={[styles.calloutName, { color: COLORS.danger }]}>🚨 {a.clientName || a.title}</Text>
                 <Text style={styles.calloutSub}>{a.message}</Text>
                 <Text style={styles.calloutTime}>
                   {new Date(a.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}

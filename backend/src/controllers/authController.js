@@ -8,10 +8,21 @@ function generateToken(payload) {
   });
 }
 
+// Estos 3 endpoints son públicos (login/registro), así que son el punto
+// real de entrada de datos no confiables — antes un `username`/`password`
+// que no fuera string (ej. un objeto u array en el JSON) llegaba directo a
+// Sequelize y podía terminar en un 500 crudo en vez de un 400 claro.
+function isValidCredential(value, maxLength = 100) {
+  return typeof value === 'string' && value.length > 0 && value.length <= maxLength;
+}
+
 // ── ADMIN ──────────────────────────────────────────────────────────────────
 exports.adminLogin = async (req, res) => {
   try {
     const { username, password } = req.body;
+    if (!isValidCredential(username) || !isValidCredential(password)) {
+      return res.status(400).json({ error: 'Usuario o contraseña incorrectos' });
+    }
     const admin = await Admin.findOne({ where: { username, isActive: true } });
     if (!admin || !(await admin.validatePassword(password))) {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
@@ -37,6 +48,9 @@ exports.adminRegister = async (req, res) => {
     }
 
     const { username, password, name } = req.body;
+    if (!isValidCredential(username) || !isValidCredential(password) || !isValidCredential(name, 150)) {
+      return res.status(400).json({ error: 'Usuario, contraseña y nombre son obligatorios' });
+    }
     const admin = await Admin.create({ username, password, name });
     const token = generateToken({ id: admin.id, role: 'admin' });
     res.status(201).json({ token, user: { id: admin.id, username: admin.username, name: admin.name, role: 'admin' } });
@@ -171,6 +185,9 @@ exports.securityFaceScan = async (req, res) => {
 exports.clientLogin = async (req, res) => {
   try {
     const { username, password } = req.body;
+    if (!isValidCredential(username) || !isValidCredential(password)) {
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+    }
     const client = await Client.findOne({
       where: { username, isActive: true },
       include: [{ association: 'neighborhood', attributes: ['id', 'name'] }],

@@ -206,6 +206,14 @@ function ClientAlertCard({ item, isPending, onResolve }) {
           : <View style={styles.resolvedBadge}><Text style={styles.resolvedBadgeText}>Resuelta</Text></View>
         }
       </View>
+      {!!item.clientName && (
+        <View style={styles.contactRow}>
+          <Ionicons name="person-outline" size={13} color={COLORS.accent} />
+          <Text style={styles.contactText}>
+            {item.clientName}{item.clientNeighborhood ? ` · ${item.clientNeighborhood}` : ''}
+          </Text>
+        </View>
+      )}
       <Text style={[styles.cardMsg, !isPending && styles.cardMsgResolved]}>{item.message}</Text>
       {item.clientLatitude ? (
         <View style={styles.locationRow}>

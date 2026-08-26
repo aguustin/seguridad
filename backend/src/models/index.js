@@ -12,6 +12,8 @@ const PatrolRoute = require('./PatrolRoute');
 const PatrolCheckpoint = require('./PatrolCheckpoint');
 const PatrolSession = require('./PatrolSession');
 const PatrolCheckpointVisit = require('./PatrolCheckpointVisit');
+const Visit = require('./Visit');
+const Assignment = require('./Assignment');
 
 // Associations
 Neighborhood.hasMany(SecurityStaff, { foreignKey: 'neighborhoodId', as: 'staff' });
@@ -53,6 +55,25 @@ PatrolCheckpointVisit.belongsTo(PatrolSession, { foreignKey: 'patrolSessionId', 
 PatrolCheckpoint.hasMany(PatrolCheckpointVisit, { foreignKey: 'patrolCheckpointId', as: 'visits' });
 PatrolCheckpointVisit.belongsTo(PatrolCheckpoint, { foreignKey: 'patrolCheckpointId', as: 'checkpoint' });
 
+// ── Visitas ─────────────────────────────────────────────────────────────────
+Neighborhood.hasMany(Visit, { foreignKey: 'neighborhoodId', as: 'visits' });
+Visit.belongsTo(Neighborhood, { foreignKey: 'neighborhoodId', as: 'neighborhood' });
+
+SecurityStaff.hasMany(Visit, { foreignKey: 'registeredByStaffId', as: 'registeredVisits' });
+Visit.belongsTo(SecurityStaff, { foreignKey: 'registeredByStaffId', as: 'registeredBy' });
+
+Client.hasMany(Visit, { foreignKey: 'destinationClientId', as: 'visits' });
+Visit.belongsTo(Client, { foreignKey: 'destinationClientId', as: 'destinationClient' });
+
+// ── Asignaciones ────────────────────────────────────────────────────────────
+Neighborhood.hasMany(Assignment, { foreignKey: 'neighborhoodId', as: 'assignments' });
+Assignment.belongsTo(Neighborhood, { foreignKey: 'neighborhoodId', as: 'neighborhood' });
+
+SecurityStaff.hasMany(Assignment, { foreignKey: 'securityStaffId', as: 'assignments' });
+Assignment.belongsTo(SecurityStaff, { foreignKey: 'securityStaffId', as: 'staff' });
+
+Assignment.belongsTo(Admin, { foreignKey: 'assignedByAdminId', as: 'assignedBy' });
+
 module.exports = {
   Admin,
   Neighborhood,
@@ -68,4 +89,6 @@ module.exports = {
   PatrolCheckpoint,
   PatrolSession,
   PatrolCheckpointVisit,
+  Visit,
+  Assignment,
 };

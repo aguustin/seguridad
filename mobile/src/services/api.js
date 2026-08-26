@@ -121,6 +121,50 @@ export const getMyActiveAlert = () => api.get('/security/guard-alert/active');
 export const confirmCheckin = (sessionId) => api.post('/security/checkin/confirm', { sessionId });
 export const securityLogout = () => api.post('/security/logout');
 
+// ── Security - Rondas ──────────────────────────────────────────────────────
+export const getPatrolRoutes = () => api.get('/security/patrol/routes');
+export const startPatrol = (patrolRouteId) => api.post('/security/patrol/start', { patrolRouteId });
+export const getActivePatrol = () => api.get('/security/patrol/active');
+export const registerCheckpointVisit = (patrolCheckpointId) =>
+  api.post('/security/patrol/checkpoint', { patrolCheckpointId });
+export const endPatrol = () => api.post('/security/patrol/end');
+export const getMyPatrolHistory = (params) => api.get('/security/patrol/history', { params });
+export const getMyPatrolDetail = (id) => api.get(`/security/patrol/history/${id}`);
+
+// ── Security - Visitas ─────────────────────────────────────────────────────
+export const registerVisit = (data) => api.post('/security/visits', data);
+export const getActiveVisits = () => api.get('/security/visits/active');
+export const getVisitHistory = (params) => api.get('/security/visits', { params });
+export const registerVisitExit = (id) => api.patch(`/security/visits/${id}/exit`);
+
+// ── Admin - Visitas ────────────────────────────────────────────────────────
+export const getAdminVisits = (params) => api.get('/admin/visits', { params });
+
+// ── Security - Asignaciones ────────────────────────────────────────────────
+export const getMyAssignments = () => api.get('/security/assignments');
+export const completeAssignment = (id) => api.patch(`/security/assignments/${id}/complete`);
+
+// ── Admin - Asignaciones ───────────────────────────────────────────────────
+export const createAssignment = (data) => api.post('/admin/assignments', data);
+export const getAssignments = (params) => api.get('/admin/assignments', { params });
+export const cancelAssignment = (id) => api.patch(`/admin/assignments/${id}/cancel`);
+
+// ── Admin - Rondas realizadas ──────────────────────────────────────────────
+export const getPatrolSessions = (params) => api.get('/admin/patrol/sessions', { params });
+export const getPatrolSessionDetail = (id) => api.get(`/admin/patrol/sessions/${id}`);
+
+// ── Admin - Rutas y checkpoints de ronda ───────────────────────────────────
+export const getPatrolAdminRoutes = (neighborhoodId) =>
+  api.get('/admin/patrol/routes', { params: { neighborhoodId } });
+export const getPatrolAdminRoute = (id) => api.get(`/admin/patrol/routes/${id}`);
+export const createPatrolRoute = (data) => api.post('/admin/patrol/routes', data);
+export const updatePatrolRoute = (id, data) => api.put(`/admin/patrol/routes/${id}`, data);
+export const deactivatePatrolRoute = (id) => api.delete(`/admin/patrol/routes/${id}`);
+export const createPatrolCheckpoint = (routeId, data) =>
+  api.post(`/admin/patrol/routes/${routeId}/checkpoints`, data);
+export const updatePatrolCheckpoint = (id, data) => api.put(`/admin/patrol/checkpoints/${id}`, data);
+export const deletePatrolCheckpoint = (id) => api.delete(`/admin/patrol/checkpoints/${id}`);
+
 // ── Client ─────────────────────────────────────────────────────────────────
 export const getClientProfile = () => api.get('/client/profile');
 export const toggleLocationSharing = (enabled) =>

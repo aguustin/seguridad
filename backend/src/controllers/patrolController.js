@@ -1,4 +1,6 @@
-const { PatrolRoute, PatrolCheckpoint, Neighborhood } = require('../models');
+const { Op } = require('sequelize');
+const { PatrolRoute, PatrolCheckpoint, PatrolCheckpointVisit, PatrolSession, Neighborhood } = require('../models');
+const patrolService = require('../services/patrolService');
 
 // ── Validación ─────────────────────────────────────────────────────────────
 // Funciones simples, locales a este controller — no ameritan un service
@@ -191,11 +193,79 @@ exports.deleteCheckpoint = async (req, res) => {
     const checkpoint = await PatrolCheckpoint.findByPk(id);
     if (!checkpoint) return res.status(404).json({ error: 'Checkpoint no encontrado' });
 
-    // Eliminación real (no hay isActive en PatrolCheckpoint) — a esta
-    // altura no hay PatrolCheckpointVisit todavía (la ejecución de rondas
-    // no está implementada), así que no hay riesgo de dejar huérfanos.
+    // Eliminación real (no hay isActive en PatrolCheckpoint). Ahora que la
+    // ejecución de rondas ya registra PatrolCheckpointVisit (ver
+    // securityController.registerCheckpointVisit), un checkpoint con
+    // visitas no se puede borrar sin dejar el historial de rondas
+    // huérfano/incompleto — se valida acá explícitamente para devolver un
+    // error claro en vez de que la FK lo rechace como un 500 crudo.
+    const visitCount = await PatrolCheckpointVisit.count({ where: { patrolCheckpointId: id } });
+    if (visitCount > 0) {
+      return res.status(400).json({
+        error: `No se puede eliminar: el checkpoint tiene ${visitCount} visita${visitCount === 1 ? '' : 's'} registrada${visitCount === 1 ? '' : 's'}.`,
+      });
+    }
+
     await checkpoint.destroy();
     res.json({ message: 'Checkpoint eliminado correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ── RONDAS REALIZADAS (vista administrativa) ────────────────────────────────
+// Listado con filtros simples — mismo criterio que adminController
+// (ej. getAttendanceHistory/getFinancialRecords: where dinámico + Op.gte/lte
+// sobre una fecha existente, paginación con limit/offset).
+exports.getSessions = async (req, res) => {
+  try {
+    const {
+      securityStaffId, patrolRouteId, neighborhoodId, status,
+      from, to, limit = 50, offset = 0,
+    } = req.query;
+
+    const where = {};
+    if (securityStaffId) where.securityStaffId = securityStaffId;
+    if (patrolRouteId) where.patrolRouteId = patrolRouteId;
+    if (status) where.status = status;
+    if (from || to) {
+      where.startedAt = {};
+      if (from) where.startedAt[Op.gte] = new Date(from);
+      if (to) where.startedAt[Op.lte] = new Date(to);
+    }
+
+    // Filtrar por barrio implica filtrar por la ruta asociada — where en el
+    // include fuerza el INNER JOIN correspondiente.
+    const routeInclude = {
+      association: 'route',
+      include: [{ association: 'neighborhood', attributes: ['id', 'name'] }],
+    };
+    if (neighborhoodId) routeInclude.where = { neighborhoodId };
+
+    const result = await PatrolSession.findAndCountAll({
+      where,
+      include: [
+        routeInclude,
+        { association: 'staff', attributes: ['id', 'firstName', 'lastName'] },
+      ],
+      order: [['startedAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+    });
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getSessionDetail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const session = await PatrolSession.findByPk(id, { include: patrolService.SESSION_INCLUDE });
+    if (!session) return res.status(404).json({ error: 'Ronda no encontrada' });
+
+    res.json(patrolService.serializeSession(session));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

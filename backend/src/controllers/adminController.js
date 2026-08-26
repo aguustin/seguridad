@@ -471,7 +471,29 @@ exports.getAlerts = async (req, res) => {
       order: [['createdAt', 'DESC']],
       limit: 50,
     });
-    res.json(alerts);
+
+    // Enriquecer con nombre y barrio del cliente que envió la alerta —
+    // mismo criterio que getGuardAlerts (Alert no tiene FK real a Client,
+    // ver decisión histórica documentada en el modelo). Antes esta lista no
+    // traía ningún dato del cliente: el admin no tenía forma de saber quién
+    // envió la emergencia salvo lo que el propio cliente haya escrito en el
+    // mensaje.
+    const enriched = await Promise.all(
+      alerts.map(async (a) => {
+        if (!a.senderId) return a.toJSON();
+        const client = await Client.findByPk(a.senderId, {
+          attributes: ['firstName', 'lastName'],
+          include: [{ association: 'neighborhood', attributes: ['name'] }],
+        });
+        return {
+          ...a.toJSON(),
+          clientName: client ? `${client.firstName} ${client.lastName}` : null,
+          clientNeighborhood: client?.neighborhood?.name || null,
+        };
+      })
+    );
+
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -480,7 +502,17 @@ exports.getAlerts = async (req, res) => {
 exports.resolveAlert = async (req, res) => {
   try {
     const { id } = req.params;
-    await Alert.update({ isRead: true, resolvedAt: new Date() }, { where: { id } });
+    // Acotado a client_emergency: este endpoint es "resolver emergencia de
+    // cliente" (ver sección de rutas). guard_alert tiene su propio endpoint
+    // de resolución (securityController.resolveGuardAlert, con su propia
+    // regla de quién puede resolverla) — sin este filtro, este endpoint
+    // podía en teoría tocar cualquier tipo de Alert por id.
+    const [count] = await Alert.update(
+      { isRead: true, resolvedAt: new Date() },
+      { where: { id, type: 'client_emergency' } }
+    );
+    if (count === 0) return res.status(404).json({ error: 'Alerta no encontrada' });
+
     // Notificar a todos los admins conectados para que actualicen el contador
     const io = req.app.get('io');
     if (io) io.emit('alert_resolved', { id });

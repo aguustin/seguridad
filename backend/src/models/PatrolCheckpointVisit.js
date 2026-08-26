@@ -33,6 +33,18 @@ const PatrolCheckpointVisit = sequelize.define('PatrolCheckpointVisit', {
     allowNull: false,
     defaultValue: DataTypes.NOW,
   },
+  // Cómo se confirmó la presencia del guardia en el checkpoint: 'gps'
+  // (dentro del radio configurado, ver securityController.registerCheckpointVisit)
+  // o 'qr' (escaneó el código físico pegado en el lugar, ver
+  // securityController.scanCheckpointQR) — mecanismo alternativo para
+  // checkpoints donde el GPS es poco confiable (interiores, garitas). STRING
+  // en vez de ENUM: mismo criterio que AuditLog.actorRole/entityType, ya que
+  // el esquema solo evoluciona con sequelize.sync({alter:true}).
+  method: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'gps',
+  },
 }, {
   indexes: [
     // Garantiza a nivel de DB que un checkpoint no se registre dos veces en

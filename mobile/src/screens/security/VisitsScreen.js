@@ -162,6 +162,9 @@ export default function VisitsScreen({ navigation }) {
                     : v.destinationDescription}
                 </Text>
                 {!!v.vehiclePlate && <Text style={styles.visitorMeta}>Patente: {v.vehiclePlate}</Text>}
+                {!!v.destinationClient?.contact && (
+                  <Text style={styles.visitorMeta}>Tel. {v.destinationClient.firstName}: {v.destinationClient.contact}</Text>
+                )}
                 <Text style={styles.visitorTime}>
                   Ingresó {new Date(v.entryAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                 </Text>
@@ -181,9 +184,18 @@ export default function VisitsScreen({ navigation }) {
       </ScrollView>
 
       {neighborhoodAssigned && (
-        <TouchableOpacity style={styles.fab} onPress={openNew} activeOpacity={0.85}>
-          <Ionicons name="person-add" size={26} color={COLORS.primary} />
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity
+            style={[styles.fab, styles.fabScan]}
+            onPress={() => navigation.navigate('ScanVisitorQR')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="qr-code-outline" size={24} color={COLORS.white} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.fab} onPress={openNew} activeOpacity={0.85}>
+            <Ionicons name="person-add" size={26} color={COLORS.primary} />
+          </TouchableOpacity>
+        </>
       )}
 
       <Modal visible={showModal} animationType="slide" transparent>
@@ -253,6 +265,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     elevation: 8,
     shadowColor: COLORS.accent, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8,
+  },
+  fabScan: {
+    right: 90, backgroundColor: COLORS.info,
+    shadowColor: COLORS.info,
   },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },

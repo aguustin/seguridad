@@ -7,11 +7,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useKiosk } from '../../context/KioskContext';
 import {
-  getSecurityStaff, getNeighborhoods, getAlerts,
+  getSecurityStaff, getNeighborhoods, getAlerts, getClients,
   getKioskState, setKioskState,
 } from '../../services/api';
 import { getSocket } from '../../services/socket';
 import StatCard from '../../components/StatCard';
+import ChangePasswordModal from '../../components/ChangePasswordModal';
 import { COLORS } from '../../config/constants';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -34,8 +35,9 @@ const QuickAction = ({ icon, label, color, onPress }) => (
 export default function AdminDashboardScreen({ navigation }) {
   const { user, logout } = useAuth();
   const { activateKiosk } = useKiosk();
-  const [stats, setStats] = useState({ total: 0, active: 0, neighborhoods: 0, alerts: 0 });
+  const [stats, setStats] = useState({ total: 0, active: 0, neighborhoods: 0, alerts: 0, clients: 0 });
   const [refreshing, setRefreshing] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   // Estado global del kiosco de acceso (abierto/cerrado), persistido en
   // backend — independiente de "activar modo escáner" (que solo bloquea
@@ -116,14 +118,15 @@ export default function AdminDashboardScreen({ navigation }) {
 
   async function loadStats() {
     try {
-      const [staffRes, neighborRes, alertsRes] = await Promise.all([
-        getSecurityStaff(), getNeighborhoods(), getAlerts(),
+      const [staffRes, neighborRes, alertsRes, clientsRes] = await Promise.all([
+        getSecurityStaff(), getNeighborhoods(), getAlerts(), getClients(),
       ]);
       setStats({
         total: staffRes.data.length,
         active: staffRes.data.filter((s) => s.isOnDuty).length,
         neighborhoods: neighborRes.data.length,
         alerts: alertsRes.data.filter((a) => !a.isRead).length,
+        clients: clientsRes.data.length,
       });
     } catch {}
   }
@@ -153,19 +156,29 @@ export default function AdminDashboardScreen({ navigation }) {
             <Text style={styles.adminName}>{user?.name}</Text>
           </View>
         </View>
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-          onPress={() =>
-            Alert.alert('Cerrar sesión', '¿Querés salir?', [
-              { text: 'Cancelar', style: 'cancel' },
-              { text: 'Salir', style: 'destructive', onPress: logout },
-            ])
-          }
-        >
-          <Ionicons name="log-out-outline" size={22} color="rgba(255,255,255,0.55)" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+            onPress={() => setShowChangePassword(true)}
+          >
+            <Ionicons name="key-outline" size={22} color="rgba(255,255,255,0.55)" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+            onPress={() =>
+              Alert.alert('Cerrar sesión', '¿Querés salir?', [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Salir', style: 'destructive', onPress: logout },
+              ])
+            }
+          >
+            <Ionicons name="log-out-outline" size={22} color="rgba(255,255,255,0.55)" />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      <ChangePasswordModal visible={showChangePassword} onClose={() => setShowChangePassword(false)} />
 
       {/* ── Banner emergencias ── */}
       {stats.alerts > 0 && (
@@ -230,6 +243,8 @@ export default function AdminDashboardScreen({ navigation }) {
             onPress={() => navigation.navigate('Neighborhoods')} />
           <StatCard icon="alert-circle"    label="Alertas"   value={stats.alerts}
             onPress={() => navigation.navigate('AdminAlerts')} />
+          <StatCard icon="person-circle"   label="Clientes"  value={stats.clients}
+            onPress={() => navigation.navigate('ClientList')} />
         </View>
       </View>
 
@@ -240,6 +255,7 @@ export default function AdminDashboardScreen({ navigation }) {
           {/*<QuickAction icon="people-outline"     label="Guardias"      color={COLORS.info}    onPress={() => navigation.navigate('SecurityList')} />*/}
           <QuickAction icon="grid-outline"        label="Centro de Control" color={COLORS.danger} onPress={() => navigation.navigate('ControlCenter')} />
           <QuickAction icon="person-add-outline" label="Nuevo guardia"  color={COLORS.accent}  onPress={() => navigation.navigate('RegisterSecurity')} />
+          <QuickAction icon="people-outline"      label="Clientes"      color={COLORS.success} onPress={() => navigation.navigate('ClientList')} />
           <QuickAction icon="person-add-outline" label="Nuevo cliente" color={COLORS.success} onPress={() => navigation.navigate('RegisterClient')} />
           <QuickAction icon="map-outline"        label="Mapa en vivo"  color={COLORS.accent}  onPress={() => navigation.navigate('AdminMap')} />
           <QuickAction icon="megaphone-outline"  label="Enviar alerta" color={COLORS.danger}  onPress={() => navigation.navigate('SendAlert')} />
@@ -251,6 +267,7 @@ export default function AdminDashboardScreen({ navigation }) {
           <QuickAction icon="map-outline"         label="Rutas de ronda" color={COLORS.accent} onPress={() => navigation.navigate('PatrolRoutes')} />
           <QuickAction icon="people-outline"      label="Visitas"       color={COLORS.info}    onPress={() => navigation.navigate('AdminVisits')} />
           <QuickAction icon="clipboard-outline"   label="Asignaciones"  color="#f472b6"        onPress={() => navigation.navigate('Assignments')} />
+          <QuickAction icon="time-outline"        label="Auditoría"     color="#94a3b8"        onPress={() => navigation.navigate('AuditLog')} />
         </View>
       </View>
     </ScrollView>
@@ -281,6 +298,7 @@ const styles = StyleSheet.create({
   },
   greeting:  { fontSize: 11, color: 'rgba(255,255,255,0.4)', letterSpacing: 0.5 },
   adminName: { fontSize: 17, fontWeight: '700', color: COLORS.white, marginTop: 1 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   logoutBtn: { padding: 8 },
 
   // Banner

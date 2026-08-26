@@ -26,6 +26,7 @@ router.post('/patrol/start', securityController.startPatrol);
 router.post('/patrol/end', securityController.endPatrol);
 router.get('/patrol/active', securityController.getActivePatrol);
 router.post('/patrol/checkpoint', securityController.registerCheckpointVisit);
+router.post('/patrol/checkpoint/scan', securityController.scanCheckpointQR);
 router.get('/patrol/history', securityController.getMyPatrolHistory);
 router.get('/patrol/history/:id', securityController.getMyPatrolDetail);
 
@@ -34,6 +35,7 @@ router.post('/visits', securityController.registerVisit);
 router.get('/visits/active', securityController.getActiveVisits);
 router.get('/visits', securityController.getVisitHistory);
 router.patch('/visits/:id/exit', securityController.registerVisitExit);
+router.post('/visits/scan', securityController.scanVisitInvitation);
 
 // Asignaciones (tareas puntuales del admin al guardia)
 router.get('/assignments', securityController.getMyAssignments);

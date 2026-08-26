@@ -25,6 +25,14 @@ const Admin = sequelize.define('Admin', {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
+  // Mismo campo que SecurityStaff/Client — hasta ahora solo esos dos roles
+  // podían recibir push (el admin nunca tuvo dónde guardarlo, aunque
+  // AdminLoginScreen ya intentaba registrarlo). Necesario para que una
+  // emergencia de cliente/guardia le llegue al admin aunque tenga la app
+  // cerrada (antes solo se enteraba por socket, si estaba conectado).
+  expoPushToken: {
+    type: DataTypes.STRING,
+  },
 }, {
   hooks: {
     beforeCreate: async (admin) => {

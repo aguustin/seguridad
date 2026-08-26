@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useKiosk } from '../context/KioskContext';
 import { COLORS } from '../config/constants';
+import { navigationRef } from './navigationRef';
 
 // Screens
 import RoleSelectScreen from '../screens/RoleSelectScreen';
@@ -22,6 +23,8 @@ import AdminAlertsScreen from '../screens/admin/AdminAlertsScreen';
 import FinancesScreen from '../screens/admin/FinancesScreen';
 import StatisticsScreen from '../screens/admin/StatisticsScreen';
 import RegisterClientScreen from '../screens/admin/RegisterClientScreen';
+import ClientsListScreen from '../screens/admin/ClientsListScreen';
+import EditClientScreen from '../screens/admin/EditClientScreen';
 import RegisterSecurityScreen from '../screens/admin/RegisterSecurityScreen';
 import RegisterAdminScreen from '../screens/admin/RegisterAdminScreen';
 import PatrolSessionsScreen from '../screens/admin/PatrolSessionsScreen';
@@ -31,6 +34,7 @@ import PatrolRouteCheckpointsScreen from '../screens/admin/PatrolRouteCheckpoint
 import AdminVisitsScreen from '../screens/admin/AdminVisitsScreen';
 import AssignmentsScreen from '../screens/admin/AssignmentsScreen';
 import ControlCenterScreen from '../screens/admin/ControlCenterScreen';
+import AuditLogScreen from '../screens/admin/AuditLogScreen';
 
 // Security
 import FaceScanScreen from '../screens/security/FaceScanScreen';
@@ -42,12 +46,15 @@ import PatrolHistoryScreen from '../screens/security/PatrolHistoryScreen';
 import PatrolHistoryDetailScreen from '../screens/security/PatrolHistoryDetailScreen';
 import VisitsScreen from '../screens/security/VisitsScreen';
 import VisitHistoryScreen from '../screens/security/VisitHistoryScreen';
+import ScanVisitorQRScreen from '../screens/security/ScanVisitorQRScreen';
+import ScanCheckpointQRScreen from '../screens/security/ScanCheckpointQRScreen';
 
 // Client
 import ClientLoginScreen from '../screens/client/ClientLoginScreen';
 import ClientDashboardScreen from '../screens/client/ClientDashboardScreen';
 import EmergencyScreen from '../screens/client/EmergencyScreen';
 import ClientChatScreen from '../screens/client/ClientChatScreen';
+import VisitInvitationScreen from '../screens/client/VisitInvitationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -94,8 +101,11 @@ function AdminNavigator() {
       <Stack.Screen name="PatrolRoutes" component={PatrolRoutesScreen} options={{ title: 'Rutas de ronda' }} />
       <Stack.Screen name="PatrolRouteCheckpoints" component={PatrolRouteCheckpointsScreen} options={{ title: 'Checkpoints' }} />
       <Stack.Screen name="AdminVisits" component={AdminVisitsScreen} options={{ title: 'Visitas' }} />
+      <Stack.Screen name="ClientList" component={ClientsListScreen} options={{ title: 'Clientes' }} />
+      <Stack.Screen name="EditClient" component={EditClientScreen} options={{ title: 'Editar cliente' }} />
       <Stack.Screen name="Assignments" component={AssignmentsScreen} options={{ title: 'Asignaciones' }} />
       <Stack.Screen name="ControlCenter" component={ControlCenterScreen} options={{ title: 'Centro de Control' }} />
+      <Stack.Screen name="AuditLog" component={AuditLogScreen} options={{ title: 'Auditoría' }} />
     </Stack.Navigator>
   );
 }
@@ -113,6 +123,8 @@ function SecurityNavigator() {
       <Stack.Screen name="PatrolHistoryDetail" component={PatrolHistoryDetailScreen} options={{ title: 'Detalle de ronda' }} />
       <Stack.Screen name="Visits" component={VisitsScreen} options={{ title: 'Visitas' }} />
       <Stack.Screen name="VisitHistory" component={VisitHistoryScreen} options={{ title: 'Historial de visitas' }} />
+      <Stack.Screen name="ScanVisitorQR" component={ScanVisitorQRScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ScanCheckpointQR" component={ScanCheckpointQRScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -131,6 +143,7 @@ function ClientNavigator() {
       <Stack.Screen name="ClientDashboard" component={ClientDashboardScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ClientEmergency" component={EmergencyScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ClientChat" component={ClientChatScreen} options={{ title: 'Hablar con seguridad' }} />
+      <Stack.Screen name="VisitInvitation" component={VisitInvitationScreen} options={{ title: 'Invitar visita' }} />
     </Stack.Navigator>
   );
 }
@@ -153,14 +166,14 @@ export default function AppNavigator() {
   // validando credenciales de administrador (ver KioskContext).
   if (kioskActive) {
     return (
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <KioskNavigator />
       </NavigationContainer>
     );
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       {!user ? (
         <AuthNavigator />
       ) : user.role === 'admin' ? (

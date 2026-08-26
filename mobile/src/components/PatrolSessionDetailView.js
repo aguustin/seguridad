@@ -104,6 +104,7 @@ export default function PatrolSessionDetailView({ data, showStaff = false }) {
                 <Text style={styles.checkpointName}>{cp.name}</Text>
                 <Text style={cp.visited ? styles.checkpointVisited : styles.checkpointPending}>
                   {cp.visited && cp.visitedAt ? `Visitado ${formatDateTime(cp.visitedAt)}` : 'No visitado'}
+                  {cp.visited && cp.method ? ` · ${cp.method === 'qr' ? 'QR' : 'GPS'}` : ''}
                 </Text>
               </View>
             </View>

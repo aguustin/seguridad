@@ -44,6 +44,13 @@ const Assignment = sequelize.define('Assignment', {
   completedAt: {
     type: DataTypes.DATE,
   },
+  // Cuándo se le mandó el push de "seguís con esta tarea pendiente" (ver
+  // services/reminderService.js). null = todavía no se le recordó. Evita
+  // mandarle el mismo recordatorio una y otra vez en cada barrido del
+  // servicio mientras siga pending.
+  reminderSentAt: {
+    type: DataTypes.DATE,
+  },
 });
 
 module.exports = Assignment;

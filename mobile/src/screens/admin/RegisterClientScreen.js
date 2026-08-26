@@ -13,7 +13,7 @@ import { COLORS } from '../../config/constants';
 export default function RegisterClientScreen({ navigation }) {
   const [form, setForm] = useState({
     username: '', password: '', firstName: '', lastName: '',
-    age: '', neighborhoodId: '',
+    age: '', neighborhoodId: '', contact: '',
   });
   const [photo, setPhoto] = useState(null);
   const [neighborhoods, setNeighborhoods] = useState([]);
@@ -89,6 +89,7 @@ export default function RegisterClientScreen({ navigation }) {
         <Input dark label="Nombre *"      value={form.firstName}  onChangeText={set('firstName')}  icon="person-outline"   placeholder="Nombre" />
         <Input dark label="Apellido *"    value={form.lastName}   onChangeText={set('lastName')}   icon="person-outline"   placeholder="Apellido" />
         <Input dark label="Edad"          value={form.age}        onChangeText={set('age')}        icon="calendar-outline" keyboardType="numeric" placeholder="Edad" />
+        <Input dark label="Contacto (celular)" value={form.contact} onChangeText={set('contact')} icon="call-outline" keyboardType="phone-pad" placeholder="Número de teléfono" />
 
         <Text style={styles.fieldLabel}>Barrio *</Text>
         <View style={styles.neighborhoodList}>

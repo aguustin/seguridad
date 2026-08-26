@@ -4,9 +4,10 @@ const sequelize = require('../config/database');
 /**
  * Punto de control de una ruta de ronda. `radiusMeters` es el radio de
  * validación (qué tan cerca tiene que estar el guardia para que cuente
- * como "pasó por acá") — se guarda como dato, pero la lógica que
- * efectivamente compara esto contra la ubicación del guardia NO se
- * implementa en esta etapa (ver PatrolCheckpointVisit).
+ * como "pasó por acá" al registrar por GPS — ver
+ * securityController.registerCheckpointVisit). También se puede registrar
+ * escaneando un QR físico pegado en el lugar, sin depender del radio (ver
+ * securityController.scanCheckpointQR y PatrolCheckpointVisit.method).
  */
 const PatrolCheckpoint = sequelize.define('PatrolCheckpoint', {
   id: {

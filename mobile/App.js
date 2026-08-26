@@ -10,6 +10,7 @@ import AppNavigator from './src/navigation';
 // tiene que importarse una sola vez, a nivel de módulo, antes de que
 // cualquier pantalla llame a startLocationUpdatesAsync.
 import './src/services/backgroundLocation';
+import { navigateFromNotification } from './src/services/pushNavigation';
 
 // Configurar notificaciones
 Notifications.setNotificationHandler({
@@ -30,6 +31,19 @@ export default function App() {
       lightColor: '#e94560',
       sound: 'default',
     });
+
+    // App abierta/en background y el usuario toca la notificación.
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      navigateFromNotification(response.notification.request.content.data);
+    });
+
+    // App cerrada del todo y se abre justo al tocar la notificación — este
+    // caso no dispara el listener de arriba, hay que consultarlo aparte.
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) navigateFromNotification(response.notification.request.content.data);
+    });
+
+    return () => sub.remove();
   }, []);
 
   return (

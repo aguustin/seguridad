@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Switch, Alert, RefreshControl,
+  Switch, Alert, RefreshControl, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
-import { getClientProfile, toggleLocationSharing } from '../../services/api';
+import { getClientProfile, toggleLocationSharing, updateClientContact } from '../../services/api';
 import { updateLocation } from '../../services/socket';
 import * as Location from 'expo-location';
 import { COLORS } from '../../config/constants';
+import Input from '../../components/Input';
+import Button from '../../components/Button';
+import ChangePasswordModal from '../../components/ChangePasswordModal';
 
 export default function ClientDashboardScreen({ navigation }) {
   const { logout } = useAuth();
@@ -18,6 +21,12 @@ export default function ClientDashboardScreen({ navigation }) {
 
   const watcherRef  = useRef(null);
   const blockToggle = useRef(true);
+
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [contactInput, setContactInput] = useState('');
+  const [savingContact, setSavingContact] = useState(false);
+
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   useEffect(() => {
     load();
@@ -65,6 +74,24 @@ export default function ClientDashboardScreen({ navigation }) {
     }
   }
 
+  function openContactModal() {
+    setContactInput(profile?.contact || '');
+    setShowContactModal(true);
+  }
+
+  async function handleSaveContact() {
+    setSavingContact(true);
+    try {
+      const { data } = await updateClientContact(contactInput.trim());
+      setProfile((p) => ({ ...p, contact: data.contact }));
+      setShowContactModal(false);
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.error || 'No se pudo guardar el teléfono');
+    } finally {
+      setSavingContact(false);
+    }
+  }
+
   const fullName     = profile ? `${profile.firstName} ${profile.lastName}` : '';
   const neighborhood = profile?.neighborhood?.name || 'Sin barrio asignado';
 
@@ -88,18 +115,31 @@ export default function ClientDashboardScreen({ navigation }) {
             <Ionicons name="location" size={13} color={COLORS.accent} />
             <Text style={styles.neighborhoodText}>{neighborhood}</Text>
           </View>
+          <TouchableOpacity style={styles.contactRow} onPress={openContactModal}>
+            <Ionicons name="call-outline" size={13} color={profile?.contact ? COLORS.accent : 'rgba(255,255,255,0.35)'} />
+            <Text style={[styles.contactText, !profile?.contact && styles.contactTextEmpty]}>
+              {profile?.contact || 'Agregar teléfono de contacto'}
+            </Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          onPress={() =>
-            Alert.alert('Cerrar sesión', '¿Querés salir?', [
-              { text: 'Cancelar', style: 'cancel' },
-              { text: 'Salir', style: 'destructive', onPress: logout },
-            ])
-          }
-        >
-          <Ionicons name="log-out-outline" size={22} color="rgba(255,255,255,0.5)" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setShowChangePassword(true)}>
+            <Ionicons name="key-outline" size={22} color="rgba(255,255,255,0.5)" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() =>
+              Alert.alert('Cerrar sesión', '¿Querés salir?', [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Salir', style: 'destructive', onPress: logout },
+              ])
+            }
+          >
+            <Ionicons name="log-out-outline" size={22} color="rgba(255,255,255,0.5)" />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      <ChangePasswordModal visible={showChangePassword} onClose={() => setShowChangePassword(false)} />
 
       {/* Botón emergencia */}
       <TouchableOpacity
@@ -167,8 +207,47 @@ export default function ClientDashboardScreen({ navigation }) {
             <Text style={styles.actionLabel}>Alerta de emergencia</Text>
             <Text style={styles.actionDesc}>Notificá a los administradores</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('VisitInvitation')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: 'rgba(16,185,129,0.15)' }]}>
+              <Ionicons name="qr-code-outline" size={26} color={COLORS.success} />
+            </View>
+            <Text style={styles.actionLabel}>Invitar visita</Text>
+            <Text style={styles.actionDesc}>Generá un QR para agilizar el ingreso</Text>
+          </TouchableOpacity>
         </View>
       </View>
+
+      {/* Teléfono de contacto: lo usa el admin para poder llamar si mandás
+          una emergencia (ver AdminAlertsScreen) y el guardia si tu visita
+          llega sin invitación QR (ver VisitsScreen). */}
+      <Modal visible={showContactModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Teléfono de contacto</Text>
+              <TouchableOpacity onPress={() => setShowContactModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={24} color={COLORS.white} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modalHint}>
+              Lo ve un administrador si mandás una alerta de emergencia, y un guardia si te llega una visita.
+            </Text>
+            <Input
+              dark
+              label="Teléfono"
+              value={contactInput}
+              onChangeText={setContactInput}
+              icon="call-outline"
+              keyboardType="phone-pad"
+              placeholder="Número de teléfono"
+            />
+            <Button title="Guardar" onPress={handleSaveContact} loading={savingContact} style={{ marginTop: 14 }} />
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -179,10 +258,25 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary, padding: 20, paddingTop: 54,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
   },
+  headerActions:    { flexDirection: 'row', alignItems: 'center', gap: 14 },
   greeting:         { fontSize: 13, color: 'rgba(255,255,255,0.45)' },
   name:             { fontSize: 22, fontWeight: '800', color: COLORS.white, marginTop: 2 },
   neighborhoodRow:  { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5 },
   neighborhoodText: { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+  contactRow:       { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  contactText:      { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+  contactTextEmpty: { color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modal: {
+    backgroundColor: COLORS.primary,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 24, paddingBottom: 36,
+    borderTopWidth: 1, borderColor: COLORS.surfaceBorder,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  modalTitle:  { fontSize: 18, fontWeight: '800', color: COLORS.white },
+  modalHint:   { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 16, lineHeight: 17 },
 
   emergencyBtn: {
     margin: 16, backgroundColor: COLORS.accent, borderRadius: 18,

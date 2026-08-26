@@ -26,19 +26,24 @@ const SESSION_INCLUDE = [
 ];
 
 function serializeSession(session) {
-  const visitedAtByCheckpoint = new Map(
-    session.checkpointVisits.map((v) => [v.patrolCheckpointId, v.visitedAt])
+  const visitByCheckpoint = new Map(
+    session.checkpointVisits.map((v) => [v.patrolCheckpointId, v])
   );
 
-  const checkpoints = session.route.checkpoints.map((cp) => ({
-    id: cp.id,
-    name: cp.name,
-    latitude: cp.latitude,
-    longitude: cp.longitude,
-    radiusMeters: cp.radiusMeters,
-    visited: visitedAtByCheckpoint.has(cp.id),
-    visitedAt: visitedAtByCheckpoint.get(cp.id) || null,
-  }));
+  const checkpoints = session.route.checkpoints.map((cp) => {
+    const visit = visitByCheckpoint.get(cp.id);
+    return {
+      id: cp.id,
+      name: cp.name,
+      latitude: cp.latitude,
+      longitude: cp.longitude,
+      radiusMeters: cp.radiusMeters,
+      visited: !!visit,
+      visitedAt: visit?.visitedAt || null,
+      // 'gps' | 'qr' | null (no visitado) — ver models/PatrolCheckpointVisit.js.
+      method: visit?.method || null,
+    };
+  });
 
   return {
     session: {

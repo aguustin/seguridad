@@ -66,4 +66,8 @@ const requireAdminOrSecurity = (req, res, next) => {
   next();
 };
 
-module.exports = { authenticate, requireAdmin, requireSecurity, requireClient, requireAdminOrSecurity, isStillActive };
+// Exportado además de usarse acá adentro: authController.changePassword lo
+// reutiliza para resolver el modelo del usuario autenticado sin duplicar
+// este mapa (mismo motivo por el que existe acá: Admin/SecurityStaff/Client
+// comparten la forma "buscar por id + chequear isActive").
+module.exports = { authenticate, requireAdmin, requireSecurity, requireClient, requireAdminOrSecurity, isStillActive, MODEL_BY_ROLE };

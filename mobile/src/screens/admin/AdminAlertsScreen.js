@@ -17,8 +17,11 @@ function formatDate(d) {
 
 const TABS = ['Emergencias', 'Guardias'];
 
-export default function AdminAlertsScreen() {
-  const [tab, setTab] = useState(0);
+export default function AdminAlertsScreen({ route }) {
+  // Permite abrir directamente en la pestaña de Guardias (ej. al tocar el
+  // push de una guard_alert) — por default arranca en Emergencias, como
+  // siempre.
+  const [tab, setTab] = useState(route?.params?.initialTab ?? 0);
 
   // Tab Emergencias (clientes)
   const [alerts, setAlerts]       = useState([]);
@@ -212,6 +215,12 @@ function ClientAlertCard({ item, isPending, onResolve }) {
           <Text style={styles.contactText}>
             {item.clientName}{item.clientNeighborhood ? ` · ${item.clientNeighborhood}` : ''}
           </Text>
+        </View>
+      )}
+      {!!item.clientContact && (
+        <View style={styles.contactRow}>
+          <Ionicons name="call-outline" size={13} color={COLORS.accent} />
+          <Text style={styles.contactText}>{item.clientContact}</Text>
         </View>
       )}
       <Text style={[styles.cardMsg, !isPending && styles.cardMsgResolved]}>{item.message}</Text>

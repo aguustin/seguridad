@@ -8,6 +8,7 @@ import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { COLORS } from '../../config/constants';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
 export default function AdminLoginScreen({ navigation }) {
   const [username, setUsername] = useState('');

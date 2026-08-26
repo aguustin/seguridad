@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { Assignment, SecurityStaff } = require('../models');
 const { sendPushNotification } = require('../services/notificationService');
+const auditService = require('../services/auditService');
 
 // ── ASIGNACIONES (admin) ────────────────────────────────────────────────────
 // Tarea puntual asignada a un guardia específico, con seguimiento de si se
@@ -27,9 +28,11 @@ exports.createAssignment = async (req, res) => {
       description: description?.trim() || null,
     });
 
-    // Notificar al guardia: socket si está conectado (room personal, ya
-    // existente) + push si no lo está — mismo mecanismo que sendAlert.
-    // También a role:admin (ej. Centro de Control): si hay más de un admin
+    // Notificar al guardia: socket (room personal, para si tiene la app
+    // abierta) + push siempre que tenga token (para si no la tiene) — se
+    // mandan ambos sin condicionar uno al otro, mismo criterio que el resto
+    // de los eventos de este bloque (ver notificationService). También a
+    // role:admin (ej. Centro de Control): si hay más de un admin
     // conectado, antes solo se enteraba el que la creó.
     const io = req.app.get('io');
     if (io) io.to([`user:${securityStaffId}`, 'role:admin']).emit('assignment_created', assignment.toJSON());
@@ -93,8 +96,29 @@ exports.cancelAssignment = async (req, res) => {
 
     await assignment.update({ status: 'cancelled' });
 
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'assignment.cancel',
+      entityType: 'Assignment',
+      entityId: assignment.id,
+      metadata: { title: assignment.title, securityStaffId: assignment.securityStaffId },
+    });
+
     const io = req.app.get('io');
     if (io) io.to([`user:${assignment.securityStaffId}`, 'role:admin']).emit('assignment_cancelled', { id });
+
+    // Push al guardia — evita que siga una tarea que ya no corresponde si
+    // no tiene la app abierta en ese momento (antes solo se enteraba si
+    // estaba conectado al socket).
+    const staff = await SecurityStaff.findByPk(assignment.securityStaffId, { attributes: ['expoPushToken'] });
+    if (staff?.expoPushToken) {
+      await sendPushNotification(
+        staff.expoPushToken,
+        '❌ Tarea cancelada',
+        assignment.title,
+        { type: 'assignment' }
+      );
+    }
 
     res.json(assignment);
   } catch (err) {

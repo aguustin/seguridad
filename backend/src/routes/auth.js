@@ -2,6 +2,7 @@ const router = require('express').Router();
 const authController = require('../controllers/authController');
 const { faceUpload } = require('../middleware/upload');
 const { createRateLimiter } = require('../middleware/rateLimiter');
+const { authenticate } = require('../middleware/auth');
 
 // Login: generoso para no bloquear a alguien que se equivoca de contraseña
 // un par de veces, suficientemente estricto contra fuerza bruta.
@@ -31,5 +32,16 @@ router.post('/security/face-scan', faceScanLimiter, faceUpload.single('faceImage
 
 // Client
 router.post('/client/login', loginLimiter, authController.clientLogin);
+
+// Cambio de contraseña — compartido entre admin y client (ver
+// authController.changePassword). Protegido por `authenticate`: a
+// diferencia del resto de este router, acá sí hace falta estar logueado
+// (el usuario a modificar sale del token, nunca del body).
+const changePasswordLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Demasiados intentos. Esperá unos minutos e intentá de nuevo.',
+});
+router.post('/change-password', changePasswordLimiter, authenticate, authController.changePassword);
 
 module.exports = router;

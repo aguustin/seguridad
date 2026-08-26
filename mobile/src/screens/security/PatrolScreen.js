@@ -211,6 +211,19 @@ export default function PatrolScreen({ navigation }) {
             </View>
           </View>
 
+          {checkpoints.length > 0 && (
+            <TouchableOpacity
+              style={styles.qrScanLink}
+              onPress={() => navigation.navigate('ScanCheckpointQR')}
+              disabled={registeringCheckpointId !== null}
+            >
+              <Ionicons name="qr-code-outline" size={16} color={COLORS.info} />
+              <Text style={styles.qrScanLinkText}>
+                ¿Sin buena señal GPS? Registrar escaneando el QR del checkpoint
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {checkpoints.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>Esta ruta no tiene checkpoints cargados</Text>
@@ -242,6 +255,7 @@ export default function PatrolScreen({ navigation }) {
                     {cp.visited && !!cp.visitedAt ? (
                       <Text style={styles.checkpointTime}>
                         Visitado {new Date(cp.visitedAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                        {cp.method === 'qr' ? ' · QR' : cp.method === 'gps' ? ' · GPS' : ''}
                       </Text>
                     ) : (
                       <Text style={styles.checkpointHint}>
@@ -386,6 +400,13 @@ const styles = StyleSheet.create({
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   countBadge: { backgroundColor: COLORS.accent, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   countText: { fontSize: 12, fontWeight: '800', color: COLORS.primary },
+
+  qrScanLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(59,130,246,0.1)', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10,
+  },
+  qrScanLinkText: { flex: 1, fontSize: 12, color: COLORS.info, fontWeight: '600' },
 
   routeCard: {
     backgroundColor: COLORS.surface, borderRadius: 14, padding: 16,

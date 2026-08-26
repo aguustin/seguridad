@@ -51,6 +51,10 @@ export const adminRegister = (data) =>
 export const clientLogin = (username, password) =>
   api.post('/auth/client/login', { username, password });
 
+// Compartido admin/client — ver authController.changePassword.
+export const changePassword = (currentPassword, newPassword) =>
+  api.post('/auth/change-password', { currentPassword, newPassword });
+
 // Timeout más largo que el resto: contempla el cold-start del backend en
 // Render Free (puede tardar ~30-50s en "despertar") + el tiempo de
 // inferencia de face-api.
@@ -91,6 +95,8 @@ export const registerClient = (formData) =>
   multipartPost('/admin/clients', formData);
 export const getClients = (neighborhoodId) =>
   api.get('/admin/clients', { params: { neighborhoodId } });
+export const updateClient = (id, data) => api.put(`/admin/clients/${id}`, data);
+export const deactivateClient = (id) => api.delete(`/admin/clients/${id}`);
 
 // ── Admin - Finanzas ───────────────────────────────────────────────────────
 export const createFinancialRecord = (data) => api.post('/admin/finances', data);
@@ -99,6 +105,9 @@ export const getFinancialStats = (period) =>
   api.get('/admin/finances/stats', { params: { period } });
 export const updateFinancialRecord = (id, data) => api.put(`/admin/finances/${id}`, data);
 export const deleteFinancialRecord = (id) => api.delete(`/admin/finances/${id}`);
+
+// ── Admin - Estadísticas operativas ────────────────────────────────────────
+export const getOperationalStats = (params) => api.get('/admin/statistics', { params });
 
 // ── Admin - Administradores ────────────────────────────────────────────────
 export const createAdmin = (data) => api.post('/admin/admins', data);
@@ -127,6 +136,8 @@ export const startPatrol = (patrolRouteId) => api.post('/security/patrol/start',
 export const getActivePatrol = () => api.get('/security/patrol/active');
 export const registerCheckpointVisit = (patrolCheckpointId) =>
   api.post('/security/patrol/checkpoint', { patrolCheckpointId });
+export const scanCheckpointQR = (patrolCheckpointId) =>
+  api.post('/security/patrol/checkpoint/scan', { patrolCheckpointId });
 export const endPatrol = () => api.post('/security/patrol/end');
 export const getMyPatrolHistory = (params) => api.get('/security/patrol/history', { params });
 export const getMyPatrolDetail = (id) => api.get(`/security/patrol/history/${id}`);
@@ -136,9 +147,14 @@ export const registerVisit = (data) => api.post('/security/visits', data);
 export const getActiveVisits = () => api.get('/security/visits/active');
 export const getVisitHistory = (params) => api.get('/security/visits', { params });
 export const registerVisitExit = (id) => api.patch(`/security/visits/${id}/exit`);
+export const scanVisitInvitation = (invitationId) => api.post('/security/visits/scan', { invitationId });
 
 // ── Admin - Visitas ────────────────────────────────────────────────────────
 export const getAdminVisits = (params) => api.get('/admin/visits', { params });
+
+// ── Client - Invitaciones de visita (QR) ───────────────────────────────────
+export const createVisitInvitation = (visitorName) => api.post('/client/visit-invitations', { visitorName });
+export const getVisitInvitations = () => api.get('/client/visit-invitations');
 
 // ── Security - Asignaciones ────────────────────────────────────────────────
 export const getMyAssignments = () => api.get('/security/assignments');
@@ -148,6 +164,9 @@ export const completeAssignment = (id) => api.patch(`/security/assignments/${id}
 export const createAssignment = (data) => api.post('/admin/assignments', data);
 export const getAssignments = (params) => api.get('/admin/assignments', { params });
 export const cancelAssignment = (id) => api.patch(`/admin/assignments/${id}/cancel`);
+
+// ── Admin - Auditoría ──────────────────────────────────────────────────────
+export const getAuditLogs = (params) => api.get('/admin/audit', { params });
 
 // ── Admin - Rondas realizadas ──────────────────────────────────────────────
 export const getPatrolSessions = (params) => api.get('/admin/patrol/sessions', { params });
@@ -164,11 +183,14 @@ export const createPatrolCheckpoint = (routeId, data) =>
   api.post(`/admin/patrol/routes/${routeId}/checkpoints`, data);
 export const updatePatrolCheckpoint = (id, data) => api.put(`/admin/patrol/checkpoints/${id}`, data);
 export const deletePatrolCheckpoint = (id) => api.delete(`/admin/patrol/checkpoints/${id}`);
+export const getPatrolCheckpointQR = (id) => api.get(`/admin/patrol/checkpoints/${id}/qr`);
 
 // ── Client ─────────────────────────────────────────────────────────────────
 export const getClientProfile = () => api.get('/client/profile');
 export const toggleLocationSharing = (enabled) =>
   api.post('/client/location-sharing', { enabled });
+export const updateClientContact = (contact) =>
+  api.post('/client/contact', { contact });
 export const getClientChat = (params) => api.get('/client/chat', { params });
 export const sendEmergencyAlert = (data) => api.post('/client/emergency', data);
 

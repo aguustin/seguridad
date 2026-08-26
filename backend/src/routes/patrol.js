@@ -14,6 +14,7 @@ router.delete('/routes/:id', patrolController.deactivateRoute);
 // Checkpoints de una ruta
 router.post('/routes/:id/checkpoints', patrolController.createCheckpoint);
 router.put('/checkpoints/:id', patrolController.updateCheckpoint);
+router.get('/checkpoints/:id/qr', patrolController.getCheckpointQR);
 router.delete('/checkpoints/:id', patrolController.deleteCheckpoint);
 
 // Rondas realizadas (vista administrativa, con filtros)

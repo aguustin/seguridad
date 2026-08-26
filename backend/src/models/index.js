@@ -14,6 +14,8 @@ const PatrolSession = require('./PatrolSession');
 const PatrolCheckpointVisit = require('./PatrolCheckpointVisit');
 const Visit = require('./Visit');
 const Assignment = require('./Assignment');
+const AuditLog = require('./AuditLog');
+const VisitInvitation = require('./VisitInvitation');
 
 // Associations
 Neighborhood.hasMany(SecurityStaff, { foreignKey: 'neighborhoodId', as: 'staff' });
@@ -74,6 +76,19 @@ Assignment.belongsTo(SecurityStaff, { foreignKey: 'securityStaffId', as: 'staff'
 
 Assignment.belongsTo(Admin, { foreignKey: 'assignedByAdminId', as: 'assignedBy' });
 
+// ── Auditoría ───────────────────────────────────────────────────────────────
+Admin.hasMany(AuditLog, { foreignKey: 'actorId', as: 'auditLogs' });
+AuditLog.belongsTo(Admin, { foreignKey: 'actorId', as: 'actor' });
+
+// ── Invitaciones de visita (QR) ──────────────────────────────────────────────
+Neighborhood.hasMany(VisitInvitation, { foreignKey: 'neighborhoodId', as: 'visitInvitations' });
+VisitInvitation.belongsTo(Neighborhood, { foreignKey: 'neighborhoodId', as: 'neighborhood' });
+
+Client.hasMany(VisitInvitation, { foreignKey: 'createdByClientId', as: 'visitInvitations' });
+VisitInvitation.belongsTo(Client, { foreignKey: 'createdByClientId', as: 'createdBy' });
+
+VisitInvitation.belongsTo(Visit, { foreignKey: 'usedVisitId', as: 'usedVisit' });
+
 module.exports = {
   Admin,
   Neighborhood,
@@ -91,4 +106,6 @@ module.exports = {
   PatrolCheckpointVisit,
   Visit,
   Assignment,
+  AuditLog,
+  VisitInvitation,
 };

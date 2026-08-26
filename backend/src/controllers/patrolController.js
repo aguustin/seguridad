@@ -1,6 +1,8 @@
 const { Op } = require('sequelize');
+const QRCode = require('qrcode');
 const { PatrolRoute, PatrolCheckpoint, PatrolCheckpointVisit, PatrolSession, Neighborhood } = require('../models');
 const patrolService = require('../services/patrolService');
+const auditService = require('../services/auditService');
 
 // ── Validación ─────────────────────────────────────────────────────────────
 // Funciones simples, locales a este controller — no ameritan un service
@@ -121,6 +123,15 @@ exports.deactivateRoute = async (req, res) => {
     if (!route) return res.status(404).json({ error: 'Ruta no encontrada' });
 
     await route.update({ isActive: false });
+
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'patrol_route.deactivate',
+      entityType: 'PatrolRoute',
+      entityId: route.id,
+      metadata: { name: route.name },
+    });
+
     res.json({ message: 'Ruta desactivada correctamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -187,6 +198,27 @@ exports.updateCheckpoint = async (req, res) => {
   }
 };
 
+// QR físico del checkpoint, para que el admin lo imprima y lo pegue en el
+// lugar — mismo paquete `qrcode` ya usado en clientController.createVisitInvitation,
+// mismo criterio de "referencia opaca" (ver securityController.scanCheckpointQR
+// para el detalle de por qué no hace falta más que el id acá). Se genera al
+// vuelo en cada pedido en vez de guardarse: es barato de calcular y así no
+// hay una imagen desactualizada si el checkpoint se borra y se recrea con
+// otro id.
+exports.getCheckpointQR = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const checkpoint = await PatrolCheckpoint.findByPk(id);
+    if (!checkpoint) return res.status(404).json({ error: 'Checkpoint no encontrado' });
+
+    const qrDataUrl = await QRCode.toDataURL(`patrol-checkpoint:${checkpoint.id}`, { margin: 1, width: 300 });
+
+    res.json({ qrDataUrl, name: checkpoint.name });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.deleteCheckpoint = async (req, res) => {
   try {
     const { id } = req.params;
@@ -206,7 +238,17 @@ exports.deleteCheckpoint = async (req, res) => {
       });
     }
 
+    const { name, patrolRouteId } = checkpoint;
     await checkpoint.destroy();
+
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'patrol_checkpoint.delete',
+      entityType: 'PatrolCheckpoint',
+      entityId: id,
+      metadata: { name, patrolRouteId },
+    });
+
     res.json({ message: 'Checkpoint eliminado correctamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });

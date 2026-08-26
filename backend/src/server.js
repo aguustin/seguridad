@@ -7,6 +7,7 @@ require('./models'); // cargar asociaciones
 const { initSocket } = require('./services/socketService');
 const { loadModels } = require('./services/faceService');
 const checkinService = require('./services/checkinService');
+const reminderService = require('./services/reminderService');
 
 const PORT = process.env.PORT || 3000;
 
@@ -22,6 +23,7 @@ const io = new Server(httpServer, {
 app.set('io', io);
 initSocket(io);
 checkinService.init(io);
+reminderService.init();
 
 async function start() {
   try {

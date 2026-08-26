@@ -26,6 +26,8 @@ app.use('/api/kiosk', require('./routes/kiosk'));
 app.use('/api/admin/patrol', require('./routes/patrol'));
 app.use('/api/admin/visits', require('./routes/visits'));
 app.use('/api/admin/assignments', require('./routes/assignments'));
+app.use('/api/admin/audit', require('./routes/audit'));
+app.use('/api/admin/statistics', require('./routes/statistics'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
 

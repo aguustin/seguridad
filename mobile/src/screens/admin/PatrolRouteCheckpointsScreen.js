@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Modal, Alert, RefreshControl, Dimensions,
+  Modal, Alert, RefreshControl, Dimensions, Image, ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import {
   getPatrolAdminRoute, createPatrolCheckpoint, updatePatrolCheckpoint, deletePatrolCheckpoint,
+  getPatrolCheckpointQR,
 } from '../../services/api';
 import Button from '../../components/Button';
 import Input from '../../components/Input';
@@ -33,6 +34,10 @@ export default function PatrolRouteCheckpointsScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [mapRegion, setMapRegion] = useState(DEFAULT_REGION);
   const mapRef = useRef(null);
+
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrData, setQrData] = useState(null); // { name, qrDataUrl } de la última consulta
+  const [loadingQr, setLoadingQr] = useState(false);
 
   useEffect(() => {
     navigation.setOptions({ title: routeName || 'Checkpoints' });
@@ -115,6 +120,21 @@ export default function PatrolRouteCheckpointsScreen({ route, navigation }) {
     }
   }
 
+  async function openQr(cp) {
+    setShowQrModal(true);
+    setLoadingQr(true);
+    setQrData(null);
+    try {
+      const { data } = await getPatrolCheckpointQR(cp.id);
+      setQrData(data);
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.error || 'No se pudo generar el QR');
+      setShowQrModal(false);
+    } finally {
+      setLoadingQr(false);
+    }
+  }
+
   function confirmDelete(cp) {
     Alert.alert(
       'Eliminar checkpoint',
@@ -167,7 +187,10 @@ export default function PatrolRouteCheckpointsScreen({ route, navigation }) {
               <Text style={styles.cardSub}>Radio: {item.radiusMeters}m</Text>
               <Text style={styles.cardCoords}>{item.latitude.toFixed(5)}, {item.longitude.toFixed(5)}</Text>
             </View>
-            <TouchableOpacity onPress={() => openEdit(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity onPress={() => openQr(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="qr-code-outline" size={20} color={COLORS.info} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => openEdit(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginLeft: 14 }}>
               <Ionicons name="create-outline" size={20} color={COLORS.accent} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => confirmDelete(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginLeft: 14 }}>
@@ -282,6 +305,32 @@ export default function PatrolRouteCheckpointsScreen({ route, navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* ── Modal QR del checkpoint ── */}
+      <Modal visible={showQrModal} animationType="fade" transparent>
+        <View style={styles.qrModalOverlay}>
+          <View style={styles.qrModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>QR del checkpoint</Text>
+              <TouchableOpacity onPress={() => setShowQrModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={24} color={COLORS.white} />
+              </TouchableOpacity>
+            </View>
+
+            {loadingQr ? (
+              <ActivityIndicator color={COLORS.accent} style={{ marginVertical: 40 }} />
+            ) : qrData ? (
+              <>
+                <Image source={{ uri: qrData.qrDataUrl }} style={styles.qrImage} />
+                <Text style={styles.qrName}>{qrData.name}</Text>
+                <Text style={styles.qrHint}>
+                  Imprimí y pegá este código en el lugar del checkpoint. No vence: sirve para todas las rondas futuras.
+                </Text>
+              </>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -330,6 +379,16 @@ const styles = StyleSheet.create({
   },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: COLORS.white },
+
+  qrModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center' },
+  qrModal: {
+    backgroundColor: COLORS.primary, borderRadius: 20, padding: 24,
+    marginHorizontal: 24, alignItems: 'center',
+    borderWidth: 1, borderColor: COLORS.surfaceBorder,
+  },
+  qrImage: { width: 220, height: 220, borderRadius: 8, backgroundColor: COLORS.white },
+  qrName: { fontSize: 16, fontWeight: '700', color: COLORS.white, marginTop: 12 },
+  qrHint: { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 6, textAlign: 'center', lineHeight: 17 },
 
   fieldLabel: {
     fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.35)',

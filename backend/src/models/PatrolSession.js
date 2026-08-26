@@ -40,6 +40,11 @@ const PatrolSession = sequelize.define('PatrolSession', {
     allowNull: false,
     defaultValue: 'in_progress',
   },
+  // Cuándo se le mandó el push de "esta ronda sigue en curso, ¿te olvidaste
+  // de finalizarla?" (ver services/reminderService.js). null = todavía no.
+  reminderSentAt: {
+    type: DataTypes.DATE,
+  },
 });
 
 module.exports = PatrolSession;

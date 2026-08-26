@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const { Admin, SecurityStaff, Client } = require('../models');
 const faceService = require('../services/faceService');
+const auditService = require('../services/auditService');
+const { MODEL_BY_ROLE } = require('../middleware/auth');
 
 function generateToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -215,6 +217,72 @@ exports.clientLogin = async (req, res) => {
         role: 'client',
       },
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ── CAMBIO DE CONTRASEÑA (compartido admin/client) ──────────────────────────
+// Admin y Client tienen exactamente la misma estructura de credencial
+// (campo `password`, hook beforeUpdate que hashea con bcrypt, método
+// `validatePassword`) — reutilizar un único endpoint evita duplicar la
+// misma lógica dos veces. SecurityStaff no tiene contraseña: se autentica
+// por reconocimiento facial (ver securityFaceScan), así que queda afuera.
+//
+// El usuario a modificar sale siempre de `req.user` (puesto por el
+// middleware `authenticate` a partir del JWT verificado) — nunca de un id
+// en el body/params, para que no sea posible cambiarle la contraseña a
+// otra cuenta.
+exports.changePassword = async (req, res) => {
+  try {
+    const { role, id } = req.user;
+
+    if (role === 'security') {
+      return res.status(400).json({
+        error: 'Los guardias no usan contraseña — se autentican por reconocimiento facial',
+      });
+    }
+    const Model = MODEL_BY_ROLE[role];
+    if (!Model) return res.status(403).json({ error: 'Rol no reconocido' });
+
+    const { currentPassword, newPassword } = req.body;
+    if (!isValidCredential(currentPassword) || !isValidCredential(newPassword)) {
+      return res.status(400).json({ error: 'La contraseña actual y la nueva contraseña son obligatorias' });
+    }
+    // Misma regla mínima que ya usa el registro de administradores
+    // (RegisterAdminScreen: "Mínimo 6 caracteres") — no se inventa una
+    // política nueva de complejidad (mayúsculas/símbolos/etc.).
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    }
+
+    const account = await Model.findByPk(id);
+    if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+
+    const valid = await account.validatePassword(currentPassword);
+    if (!valid) return res.status(401).json({ error: 'La contraseña actual es incorrecta' });
+
+    // El hook beforeUpdate de cada modelo hashea automáticamente — mismo
+    // mecanismo (bcrypt, costo 10) que ya usa el registro/alta.
+    account.password = newPassword;
+    await account.save();
+
+    // Auditoría solo para admin: AuditLog.actorId tiene una FK real a la
+    // tabla Admins (ver models/AuditLog.js) — auditar acá un cambio hecho
+    // por un Client violaría esa FK. Ampliarla a un actor polimórfico es
+    // un cambio de esquema que no corresponde decidir en este bloque
+    // (ver resumen de la etapa: queda documentado como pendiente).
+    if (role === 'admin') {
+      await auditService.log({
+        actorId: id,
+        actorRole: 'admin',
+        action: 'admin.change_password',
+        entityType: 'Admin',
+        entityId: id,
+      });
+    }
+
+    res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

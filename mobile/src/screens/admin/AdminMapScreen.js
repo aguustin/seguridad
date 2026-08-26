@@ -313,6 +313,9 @@ export default function AdminMapScreen() {
               <View style={styles.callout}>
                 <Text style={[styles.calloutName, { color: COLORS.danger }]}>🚨 {a.clientName || a.title}</Text>
                 <Text style={styles.calloutSub}>{a.message}</Text>
+                {!!a.clientContact && (
+                  <Text style={styles.calloutSub}>📞 {a.clientContact}</Text>
+                )}
                 <Text style={styles.calloutTime}>
                   {new Date(a.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
                 </Text>

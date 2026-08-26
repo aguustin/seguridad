@@ -1,6 +1,7 @@
-const { SecurityStaff, AttendanceRecord, Message, Alert, PatrolRoute, PatrolSession, PatrolCheckpoint, PatrolCheckpointVisit, Client, Visit, Assignment } = require('../models');
+const { SecurityStaff, AttendanceRecord, Message, Alert, PatrolRoute, PatrolSession, PatrolCheckpoint, PatrolCheckpointVisit, Client, Visit, Assignment, VisitInvitation, Admin } = require('../models');
 const checkinService = require('../services/checkinService');
 const patrolService = require('../services/patrolService');
+const { sendPushNotification } = require('../services/notificationService');
 
 // ── UBICACIÓN (tracking en background) ─────────────────────────────────────
 // El tracking en foreground manda la ubicación por Socket.IO (ver
@@ -181,6 +182,22 @@ exports.sendGuardAlert = async (req, res) => {
       io.to('role:operator').emit('guard_alert', payload);
     }
 
+    // Push: un guardia pidiendo ayuda es tan urgente como una emergencia de
+    // cliente — mismo criterio, avisar aunque la app esté cerrada. Va a
+    // todos los admins con token + al operador puntual si hay uno (el
+    // operador es un guardia más, con su propio expoPushToken).
+    const [admins, operator] = await Promise.all([
+      Admin.findAll({ where: { isActive: true }, attributes: ['expoPushToken'] }),
+      SecurityStaff.findOne({ where: { isOperator: true, isActive: true }, attributes: ['expoPushToken'] }),
+    ]);
+    const pushTokens = [
+      ...admins.map((a) => a.expoPushToken),
+      operator?.expoPushToken,
+    ].filter(Boolean);
+    if (pushTokens.length > 0) {
+      await sendPushNotification(pushTokens, alert.title, alert.message, { type: 'guard_alert' });
+    }
+
     res.status(201).json({ message: 'Alerta enviada', alert });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -349,39 +366,12 @@ exports.getActivePatrol = async (req, res) => {
       return res.json({ active: false, message: 'No tenés ninguna ronda en curso' });
     }
 
-    // patrolCheckpointId → visitedAt, para marcar cada checkpoint de la ruta.
-    const visitedAtByCheckpoint = new Map(
-      session.checkpointVisits.map((v) => [v.patrolCheckpointId, v.visitedAt])
-    );
-
-    const checkpoints = session.route.checkpoints.map((cp) => ({
-      id: cp.id,
-      name: cp.name,
-      latitude: cp.latitude,
-      longitude: cp.longitude,
-      radiusMeters: cp.radiusMeters,
-      visited: visitedAtByCheckpoint.has(cp.id),
-      visitedAt: visitedAtByCheckpoint.get(cp.id) || null,
-    }));
-
-    res.json({
-      active: true,
-      session: {
-        id: session.id,
-        startedAt: session.startedAt,
-        status: session.status,
-      },
-      route: {
-        id: session.route.id,
-        name: session.route.name,
-        description: session.route.description,
-        neighborhoodId: session.route.neighborhoodId,
-        neighborhood: session.route.neighborhood
-          ? { id: session.route.neighborhood.id, name: session.route.neighborhood.name }
-          : null,
-      },
-      checkpoints,
-    });
+    // Misma forma que el historial (serializeSession) — se reutiliza en vez
+    // de duplicar el armado de checkpoints acá; ahora que hay dos formas de
+    // registrar un checkpoint (GPS y QR, ver scanCheckpointQR) mantener esto
+    // en un solo lugar evita que se desincronicen.
+    const { session: sessionOut, route: routeOut, checkpoints } = patrolService.serializeSession(session);
+    res.json({ active: true, session: sessionOut, route: routeOut, checkpoints });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -448,6 +438,35 @@ function haversineDistanceMeters(lat1, lon1, lat2, lon2) {
   return EARTH_RADIUS_M * c;
 }
 
+// Chequeos comunes a las dos formas de registrar un checkpoint (GPS y QR,
+// ver scanCheckpointQR más abajo): ronda en curso del guardia, pertenencia
+// del checkpoint a esa ruta, y no-repetición. Se extrae acá para no
+// duplicar esta lógica entre ambos flujos — lo único que difiere entre
+// ellos es cómo se prueba la presencia física (radio GPS vs. escaneo del
+// QR físico del lugar).
+async function findCheckpointForActiveSession(req, patrolCheckpointId) {
+  const session = await PatrolSession.findOne({
+    where: { securityStaffId: req.user.id, status: 'in_progress' },
+  });
+  if (!session) {
+    return { error: { status: 404, body: { error: 'No tenés ninguna ronda en curso' } } };
+  }
+
+  const checkpoint = await PatrolCheckpoint.findByPk(patrolCheckpointId);
+  if (!checkpoint || checkpoint.patrolRouteId !== session.patrolRouteId) {
+    return { error: { status: 400, body: { error: 'El checkpoint indicado no pertenece a la ruta de tu ronda actual' } } };
+  }
+
+  const alreadyVisited = await PatrolCheckpointVisit.findOne({
+    where: { patrolSessionId: session.id, patrolCheckpointId: checkpoint.id },
+  });
+  if (alreadyVisited) {
+    return { error: { status: 400, body: { error: 'Ya registraste este checkpoint en esta ronda' } } };
+  }
+
+  return { session, checkpoint };
+}
+
 exports.registerCheckpointVisit = async (req, res) => {
   try {
     const { patrolCheckpointId } = req.body;
@@ -455,28 +474,10 @@ exports.registerCheckpointVisit = async (req, res) => {
       return res.status(400).json({ error: 'patrolCheckpointId es obligatorio' });
     }
 
-    // 1. La ronda debe existir, ser del guardia autenticado, y estar en curso
-    // (mismo criterio que endPatrol: un guardia solo tiene una in_progress).
-    const session = await PatrolSession.findOne({
-      where: { securityStaffId: req.user.id, status: 'in_progress' },
-    });
-    if (!session) {
-      return res.status(404).json({ error: 'No tenés ninguna ronda en curso' });
-    }
-
-    // 2. El checkpoint debe existir y pertenecer a la ruta de esa sesión.
-    const checkpoint = await PatrolCheckpoint.findByPk(patrolCheckpointId);
-    if (!checkpoint || checkpoint.patrolRouteId !== session.patrolRouteId) {
-      return res.status(400).json({ error: 'El checkpoint indicado no pertenece a la ruta de tu ronda actual' });
-    }
-
-    // 3. No registrar el mismo checkpoint dos veces dentro de la misma ronda.
-    const alreadyVisited = await PatrolCheckpointVisit.findOne({
-      where: { patrolSessionId: session.id, patrolCheckpointId: checkpoint.id },
-    });
-    if (alreadyVisited) {
-      return res.status(400).json({ error: 'Ya registraste este checkpoint en esta ronda' });
-    }
+    // 1-3. Ronda en curso, checkpoint de esa ruta, no repetido.
+    const found = await findCheckpointForActiveSession(req, patrolCheckpointId);
+    if (found.error) return res.status(found.error.status).json(found.error.body);
+    const { session, checkpoint } = found;
 
     // 4. Última ubicación GPS conocida del guardia. Se lee lo que ya
     // mantiene actualizado el tracking existente (socket update_location /
@@ -523,6 +524,7 @@ exports.registerCheckpointVisit = async (req, res) => {
         patrolSessionId: session.id,
         patrolCheckpointId: checkpoint.id,
         visitedAt: new Date(),
+        method: 'gps',
       });
     } catch (err) {
       if (err.name === 'SequelizeUniqueConstraintError') {
@@ -535,6 +537,58 @@ exports.registerCheckpointVisit = async (req, res) => {
       message: `Checkpoint "${checkpoint.name}" registrado`,
       visit,
       distanceMeters: Math.round(distanceMeters),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ── RONDAS: registrar checkpoint por QR ─────────────────────────────────────
+// Alternativa al registro por GPS de arriba, para checkpoints donde el GPS
+// es poco confiable (interiores, garitas con mala señal): el guardia
+// escanea un QR físico pegado en el lugar en vez de depender de la
+// posición. El QR solo codifica el id del checkpoint — es un dato que ya es
+// público dentro de la operación (un guardia con acceso a la ruta puede ver
+// el checkpoint igual), así que no hace falta ningún token adicional: la
+// "prueba" real es que el guardia tuvo que estar físicamente ahí para
+// escanear el papel. A diferencia de VisitInvitation, este QR NO vence ni
+// es de un solo uso — es un marcador fijo del lugar, pensado para
+// escanearse una y otra vez en cada ronda futura (ver
+// patrolController.getCheckpointQR, que lo genera para que el admin lo
+// imprima y lo pegue).
+//
+// Importante: esto NO reemplaza ni modifica el flujo GPS de arriba — ambos
+// escriben en la misma tabla (PatrolCheckpointVisit), y el admin puede ver
+// con qué método se confirmó cada checkpoint (ver patrolService.serializeSession).
+exports.scanCheckpointQR = async (req, res) => {
+  try {
+    const { patrolCheckpointId } = req.body;
+    if (!patrolCheckpointId) {
+      return res.status(400).json({ error: 'patrolCheckpointId es obligatorio' });
+    }
+
+    const found = await findCheckpointForActiveSession(req, patrolCheckpointId);
+    if (found.error) return res.status(found.error.status).json(found.error.body);
+    const { session, checkpoint } = found;
+
+    let visit;
+    try {
+      visit = await PatrolCheckpointVisit.create({
+        patrolSessionId: session.id,
+        patrolCheckpointId: checkpoint.id,
+        visitedAt: new Date(),
+        method: 'qr',
+      });
+    } catch (err) {
+      if (err.name === 'SequelizeUniqueConstraintError') {
+        return res.status(400).json({ error: 'Ya registraste este checkpoint en esta ronda' });
+      }
+      throw err;
+    }
+
+    res.status(201).json({
+      message: `Checkpoint "${checkpoint.name}" registrado por QR`,
+      visit,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -565,13 +619,18 @@ exports.registerVisit = async (req, res) => {
       return res.status(400).json({ error: 'Indicá el destino de la visita' });
     }
 
+    // Se guarda para reusarlo más abajo al mandar el push de "tu visita
+    // llegó" — evita una segunda consulta por el mismo Client.
+    let destClient = null;
     if (destinationClientId) {
       // El cliente destino tiene que ser del mismo barrio del guardia —
-      // evita asociar una visita a un vecino de otro barrio por error.
-      const client = await Client.findOne({
-        where: { id: destinationClientId, neighborhoodId: req.user.neighborhoodId },
+      // evita asociar una visita a un vecino de otro barrio por error. Y
+      // tiene que seguir activo: un cliente dado de baja ya no debería
+      // poder recibir visitas nuevas a su nombre (ver adminController.deactivateClient).
+      destClient = await Client.findOne({
+        where: { id: destinationClientId, neighborhoodId: req.user.neighborhoodId, isActive: true },
       });
-      if (!client) return res.status(400).json({ error: 'El cliente indicado no pertenece a tu barrio' });
+      if (!destClient) return res.status(400).json({ error: 'El cliente indicado no pertenece a tu barrio' });
     }
 
     const visit = await Visit.create({
@@ -591,6 +650,19 @@ exports.registerVisit = async (req, res) => {
     // aditivo, ningún consumidor existente escuchaba este evento antes.
     const io = req.app.get('io');
     if (io) io.to('role:admin').emit('visit_registered', visit.toJSON());
+
+    // Push al residente destino, si la visita se asoció a un Client
+    // concreto (no aplica a destinationDescription libre, ahí no hay a
+    // quién avisar) — le avisa que su visita llegó aunque no tenga la app
+    // abierta en ese momento.
+    if (destClient?.expoPushToken) {
+      await sendPushNotification(
+        destClient.expoPushToken,
+        '🚪 Tu visita llegó',
+        visitorName.trim(),
+        { type: 'visit_arrived' }
+      );
+    }
 
     res.status(201).json(visit);
   } catch (err) {
@@ -620,6 +692,72 @@ exports.registerVisitExit = async (req, res) => {
   }
 };
 
+// Registra el ingreso de un visitante a partir de una invitación QR
+// generada por un cliente (ver clientController.createVisitInvitation) en
+// vez de tipear los datos a mano — crea el mismo Visit de siempre, así que
+// el resto del flujo (activos, salida, historial, Centro de Control) no
+// necesita ningún cambio.
+exports.scanVisitInvitation = async (req, res) => {
+  try {
+    if (!req.user.neighborhoodId) {
+      return res.status(400).json({ error: 'Todavía no fuiste asignado a un barrio' });
+    }
+
+    const { invitationId } = req.body;
+    if (!invitationId) {
+      return res.status(400).json({ error: 'invitationId es obligatorio' });
+    }
+
+    const invitation = await VisitInvitation.findByPk(invitationId, {
+      include: [{ association: 'createdBy', attributes: ['id', 'firstName', 'lastName', 'isActive'] }],
+    });
+    if (!invitation) {
+      return res.status(404).json({ error: 'Invitación no encontrada' });
+    }
+    // Mismo criterio que registerVisit con destinationClientId: no aceptar
+    // una invitación de un barrio distinto al del guardia que escanea.
+    if (invitation.neighborhoodId !== req.user.neighborhoodId) {
+      return res.status(400).json({ error: 'Esta invitación no pertenece a tu barrio' });
+    }
+    // El cliente que la generó pudo haber sido dado de baja después de
+    // crearla y antes de que se escanee (ventana de hasta 24hs) — ver
+    // adminController.deactivateClient.
+    if (!invitation.createdBy?.isActive) {
+      return res.status(400).json({ error: 'El cliente que generó esta invitación ya no está activo' });
+    }
+    if (invitation.usedAt) {
+      return res.status(400).json({
+        error: `Esta invitación ya fue utilizada el ${invitation.usedAt.toLocaleString('es-AR')}`,
+      });
+    }
+    if (invitation.expiresAt < new Date()) {
+      return res.status(400).json({ error: 'Esta invitación venció' });
+    }
+
+    const visit = await Visit.create({
+      neighborhoodId: req.user.neighborhoodId,
+      registeredByStaffId: req.user.id,
+      visitorName: invitation.visitorName,
+      destinationClientId: invitation.createdByClientId,
+      authorizedBy: invitation.createdBy
+        ? `Invitación QR de ${invitation.createdBy.firstName} ${invitation.createdBy.lastName}`
+        : 'Invitación QR',
+      entryAt: new Date(),
+    });
+
+    await invitation.update({ usedAt: new Date(), usedVisitId: visit.id });
+
+    // Mismo evento realtime que registerVisit — Centro de Control y
+    // cualquier otro listener existente lo recibe sin cambios.
+    const io = req.app.get('io');
+    if (io) io.to('role:admin').emit('visit_registered', visit.toJSON());
+
+    res.status(201).json(visit);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.getActiveVisits = async (req, res) => {
   try {
     if (!req.user.neighborhoodId) {
@@ -627,7 +765,9 @@ exports.getActiveVisits = async (req, res) => {
     }
     const visits = await Visit.findAll({
       where: { neighborhoodId: req.user.neighborhoodId, exitAt: null },
-      include: [{ association: 'destinationClient', attributes: ['id', 'firstName', 'lastName'] }],
+      // 'contact' para que el guardia pueda llamar al residente y
+      // confirmar la visita si hace falta (ej. visita no anunciada por QR).
+      include: [{ association: 'destinationClient', attributes: ['id', 'firstName', 'lastName', 'contact'] }],
       order: [['entryAt', 'ASC']],
     });
     res.json({ neighborhoodAssigned: true, visits });
@@ -644,7 +784,9 @@ exports.getVisitHistory = async (req, res) => {
     }
     const result = await Visit.findAndCountAll({
       where: { neighborhoodId: req.user.neighborhoodId },
-      include: [{ association: 'destinationClient', attributes: ['id', 'firstName', 'lastName'] }],
+      // 'contact' para que el guardia pueda llamar al residente y
+      // confirmar la visita si hace falta (ej. visita no anunciada por QR).
+      include: [{ association: 'destinationClient', attributes: ['id', 'firstName', 'lastName', 'contact'] }],
       order: [['entryAt', 'DESC']],
       limit: parseInt(limit),
       offset: parseInt(offset),

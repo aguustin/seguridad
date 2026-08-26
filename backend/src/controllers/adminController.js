@@ -11,6 +11,8 @@ const {
 const { sendWakeUpAlert, sendPushNotification } = require('../services/notificationService');
 const { makeUserJoinRoom, makeUserLeaveRoom } = require('../services/socketService');
 const faceService = require('../services/faceService');
+const auditService = require('../services/auditService');
+const { getPeriodRange } = require('../utils/periodRange');
 const path = require('path');
 
 // ── ADMINISTRADORES ────────────────────────────────────────────────────────
@@ -25,6 +27,13 @@ exports.createAdmin = async (req, res) => {
       return res.status(400).json({ error: 'Usuario, contraseña y nombre son obligatorios' });
     }
     const admin = await Admin.create({ username, password, name });
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'admin.create',
+      entityType: 'Admin',
+      entityId: admin.id,
+      metadata: { username: admin.username, name: admin.name },
+    });
     res.status(201).json({ id: admin.id, username: admin.username, name: admin.name });
   } catch (err) {
     if (err.name === 'SequelizeUniqueConstraintError') {
@@ -174,7 +183,17 @@ exports.updateSecurityStaff = async (req, res) => {
 exports.deactivateSecurityStaff = async (req, res) => {
   try {
     const { id } = req.params;
-    await SecurityStaff.update({ isActive: false }, { where: { id } });
+    const staff = await SecurityStaff.findByPk(id, { attributes: ['firstName', 'lastName'] });
+    if (!staff) return res.status(404).json({ error: 'Guardia no encontrado' });
+
+    await staff.update({ isActive: false });
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'security_staff.deactivate',
+      entityType: 'SecurityStaff',
+      entityId: id,
+      metadata: { firstName: staff.firstName, lastName: staff.lastName },
+    });
     res.json({ message: 'Guardia dado de baja correctamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -257,7 +276,7 @@ exports.sendAlert = async (req, res) => {
 // ── CLIENTES ───────────────────────────────────────────────────────────────
 exports.registerClient = async (req, res) => {
   try {
-    const { username, password, firstName, lastName, age, neighborhoodId } = req.body;
+    const { username, password, firstName, lastName, age, neighborhoodId, contact } = req.body;
 
     let profilePhoto = null;
     if (req.file) {
@@ -272,6 +291,7 @@ exports.registerClient = async (req, res) => {
       age: age ? parseInt(age) : null,
       profilePhoto,
       neighborhoodId,
+      contact: contact?.trim() || null,
     });
 
     res.status(201).json({
@@ -299,8 +319,100 @@ exports.getClients = async (req, res) => {
       where,
       attributes: { exclude: ['password'] },
       include: [{ association: 'neighborhood', attributes: ['id', 'name'] }],
+      order: [['firstName', 'ASC']],
     });
     res.json(clients);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Mismo criterio que updateSecurityStaff: whitelist de campos editables por
+// el admin. Se excluyen a propósito username/password (credencial de
+// login — cambiarla es una decisión aparte, no un dato administrativo) y
+// profilePhoto (tampoco es editable acá para guardias; se carga solo al
+// registrar).
+exports.updateClient = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = await Client.findByPk(id);
+    if (!client) return res.status(404).json({ error: 'Cliente no encontrado' });
+
+    const allowedFields = ['firstName', 'lastName', 'age', 'neighborhoodId', 'contact'];
+    const updates = {};
+    allowedFields.forEach((f) => { if (req.body[f] !== undefined) updates[f] = req.body[f]; });
+
+    if (updates.firstName !== undefined && !updates.firstName.trim()) {
+      return res.status(400).json({ error: 'firstName no puede estar vacío' });
+    }
+    if (updates.lastName !== undefined && !updates.lastName.trim()) {
+      return res.status(400).json({ error: 'lastName no puede estar vacío' });
+    }
+    if (updates.age !== undefined) {
+      updates.age = updates.age === '' || updates.age === null ? null : parseInt(updates.age, 10);
+    }
+    if (updates.contact !== undefined) {
+      updates.contact = updates.contact?.trim() || null;
+    }
+    if (updates.neighborhoodId !== undefined) {
+      // '' (el form de mobile lo manda así al destildar el barrio) no es un
+      // UUID válido — sin esto, Sequelize lo rechazaba con un 500 crudo en
+      // vez de guardar "sin barrio" como corresponde.
+      if (!updates.neighborhoodId) {
+        updates.neighborhoodId = null;
+      } else {
+        const neighborhood = await Neighborhood.findByPk(updates.neighborhoodId);
+        if (!neighborhood) return res.status(400).json({ error: 'El barrio indicado no existe' });
+      }
+    }
+
+    await client.update(updates);
+
+    // Edición de datos administrativos del cliente — acción de admin sobre
+    // otro usuario, mismo criterio que ya se audita para SecurityStaff/Admin.
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'client.update',
+      entityType: 'Client',
+      entityId: client.id,
+      metadata: { fields: Object.keys(updates) },
+    });
+
+    const updated = await Client.findByPk(id, {
+      attributes: { exclude: ['password'] },
+      include: [{ association: 'neighborhood', attributes: ['id', 'name'] }],
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.deactivateClient = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const client = await Client.findByPk(id, { attributes: ['firstName', 'lastName'] });
+    if (!client) return res.status(404).json({ error: 'Cliente no encontrado' });
+
+    // Soft-delete — mismo campo/criterio que SecurityStaff/Admin/Neighborhood
+    // (isActive:false). No se borra la fila: el historial de Visitas/Alertas
+    // que referencian a este cliente sigue siendo consultable sin cambios
+    // (esas consultas no filtran por isActive — ver adminController.getAlerts,
+    // securityController.getVisitHistory). Además, a partir de acá la cuenta
+    // ya no puede loguearse ni usar el token que tuviera vigente (ver
+    // middleware/auth.js → isStillActive, revalida en cada request y en el
+    // handshake de sockets).
+    await client.update({ isActive: false });
+
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'client.deactivate',
+      entityType: 'Client',
+      entityId: id,
+      metadata: { firstName: client.firstName, lastName: client.lastName },
+    });
+
+    res.json({ message: 'Cliente dado de baja correctamente' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -321,6 +433,14 @@ exports.createFinancialRecord = async (req, res) => {
       startDate,
       neighborhoodId,
       securityStaffId,
+    });
+
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'financial_record.create',
+      entityType: 'FinancialRecord',
+      entityId: record.id,
+      metadata: { type: record.type, amount: record.amount, description: record.description },
     });
 
     res.status(201).json(record);
@@ -356,21 +476,12 @@ exports.getFinancialRecords = async (req, res) => {
 exports.getFinancialStats = async (req, res) => {
   try {
     const { period } = req.query; // 'day', 'week', 'month', 'year', 'total'
-    const { sequelize } = require('../config/database');
     const adminId = req.user.id;
 
-    // Calcular rango de fechas según periodo
+    // Rango de fechas según período — mismo helper que ahora también usa
+    // statisticsController, para no mantener este cálculo en dos lugares.
     const now = new Date();
-    let from;
-    if (period === 'day') {
-      from = new Date(now); from.setHours(0, 0, 0, 0);
-    } else if (period === 'week') {
-      from = new Date(now); from.setDate(now.getDate() - 7);
-    } else if (period === 'month') {
-      from = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else if (period === 'year') {
-      from = new Date(now.getFullYear(), 0, 1);
-    }
+    const { from } = getPeriodRange(period);
 
     const where = { adminId, isActive: true };
     if (from) where.startDate = { [Op.gte]: from.toISOString().split('T')[0] };
@@ -412,8 +523,18 @@ exports.getFinancialStats = async (req, res) => {
 exports.updateFinancialRecord = async (req, res) => {
   try {
     const { id } = req.params;
-    await FinancialRecord.update(req.body, { where: { id, adminId: req.user.id } });
+    const [count] = await FinancialRecord.update(req.body, { where: { id, adminId: req.user.id } });
+    if (count === 0) return res.status(404).json({ error: 'Registro no encontrado' });
     const updated = await FinancialRecord.findByPk(id);
+
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'financial_record.update',
+      entityType: 'FinancialRecord',
+      entityId: id,
+      metadata: { changes: req.body },
+    });
+
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -423,7 +544,19 @@ exports.updateFinancialRecord = async (req, res) => {
 exports.deleteFinancialRecord = async (req, res) => {
   try {
     const { id } = req.params;
-    await FinancialRecord.update({ isActive: false }, { where: { id, adminId: req.user.id } });
+    const record = await FinancialRecord.findOne({ where: { id, adminId: req.user.id } });
+    if (!record) return res.status(404).json({ error: 'Registro no encontrado' });
+
+    await record.update({ isActive: false });
+
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'financial_record.delete',
+      entityType: 'FinancialRecord',
+      entityId: id,
+      metadata: { type: record.type, amount: record.amount, description: record.description },
+    });
+
     res.json({ message: 'Registro eliminado' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -482,13 +615,16 @@ exports.getAlerts = async (req, res) => {
       alerts.map(async (a) => {
         if (!a.senderId) return a.toJSON();
         const client = await Client.findByPk(a.senderId, {
-          attributes: ['firstName', 'lastName'],
+          attributes: ['firstName', 'lastName', 'contact'],
           include: [{ association: 'neighborhood', attributes: ['name'] }],
         });
         return {
           ...a.toJSON(),
           clientName: client ? `${client.firstName} ${client.lastName}` : null,
           clientNeighborhood: client?.neighborhood?.name || null,
+          // Para que el admin pueda llamar directo ante una emergencia —
+          // antes solo veía nombre y barrio (ver models/Client.js).
+          clientContact: client?.contact || null,
         };
       })
     );
@@ -507,15 +643,42 @@ exports.resolveAlert = async (req, res) => {
     // de resolución (securityController.resolveGuardAlert, con su propia
     // regla de quién puede resolverla) — sin este filtro, este endpoint
     // podía en teoría tocar cualquier tipo de Alert por id.
-    const [count] = await Alert.update(
-      { isRead: true, resolvedAt: new Date() },
-      { where: { id, type: 'client_emergency' } }
-    );
-    if (count === 0) return res.status(404).json({ error: 'Alerta no encontrada' });
+    //
+    // Se busca primero (en vez de un Alert.update directo por id) porque
+    // ahora hace falta el senderId para avisarle al cliente que su
+    // emergencia fue atendida — antes de esto no había ningún consumidor
+    // de ese dato acá.
+    const alert = await Alert.findOne({ where: { id, type: 'client_emergency' } });
+    if (!alert) return res.status(404).json({ error: 'Alerta no encontrada' });
+
+    await alert.update({ isRead: true, resolvedAt: new Date() });
+
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'alert.resolve',
+      entityType: 'Alert',
+      entityId: id,
+    });
 
     // Notificar a todos los admins conectados para que actualicen el contador
     const io = req.app.get('io');
     if (io) io.emit('alert_resolved', { id });
+
+    // Push al cliente que envió la emergencia — es quien más necesita
+    // enterarse de que un admin ya la vio, sobre todo si cerró la app
+    // después de mandarla (hasta ahora no tenía forma de saberlo).
+    if (alert.senderId) {
+      const client = await Client.findByPk(alert.senderId, { attributes: ['expoPushToken'] });
+      if (client?.expoPushToken) {
+        await sendPushNotification(
+          client.expoPushToken,
+          '✅ Alerta atendida',
+          'Un administrador confirmó tu emergencia.',
+          { type: 'alert_resolved' }
+        );
+      }
+    }
+
     res.json({ message: 'Alerta resuelta' });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -38,6 +38,16 @@ const Client = sequelize.define('Client', {
       key: 'id',
     },
   },
+  // Mismo campo y mismo criterio que SecurityStaff.contact (STRING libre,
+  // sin formato forzado — un guardia hoy tampoco tiene validación de
+  // formato de teléfono, así que forzarla acá sería inconsistente). Lo
+  // puede cargar el admin al registrar el cliente, o el propio cliente
+  // desde su perfil (ver clientController.updateContact) — pensado sobre
+  // todo para emergencias: hoy el admin solo veía nombre y barrio de quien
+  // mandó una alerta, sin forma de llamarlo.
+  contact: {
+    type: DataTypes.STRING,
+  },
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true,

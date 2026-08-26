@@ -38,6 +38,8 @@ router.get('/guard-alerts', adminController.getGuardAlerts);
 // Clientes
 router.post('/clients', upload.single('profilePhoto'), adminController.registerClient);
 router.get('/clients', adminController.getClients);
+router.put('/clients/:id', adminController.updateClient);
+router.delete('/clients/:id', adminController.deactivateClient);
 
 // Finanzas
 router.post('/finances', adminController.createFinancialRecord);

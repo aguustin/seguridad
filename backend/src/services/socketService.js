@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { SecurityStaff, Client } = require('../models');
+const { SecurityStaff, Client, Admin } = require('../models');
 const checkinService = require('./checkinService');
 const { isStillActive } = require('../middleware/auth');
 
@@ -181,6 +181,8 @@ function initSocket(io) {
         await SecurityStaff.update({ expoPushToken: pushToken }, { where: { id: userId } });
       } else if (role === 'client') {
         await Client.update({ expoPushToken: pushToken }, { where: { id: userId } });
+      } else if (role === 'admin') {
+        await Admin.update({ expoPushToken: pushToken }, { where: { id: userId } });
       }
     });
 

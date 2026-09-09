@@ -8,7 +8,7 @@ import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { COLORS } from '../../config/constants';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 export default function ClientLoginScreen({ navigation }) {
   const [username, setUsername] = useState('');
@@ -23,19 +23,28 @@ export default function ClientLoginScreen({ navigation }) {
       const { data } = await clientLogin(username, password);
       await login(data.user, data.token);
       connectSocket(data.token);
-      const { status } = await Notifications.requestPermissionsAsync();
-      if (status === 'granted') {
-        //const t = await Notifications.getExpoPushTokenAsync(); FUNCIONA EN DEV, PERO EN PRODUCCIÓN HAY QUE ESPECIFICAR EL PROJECT ID
-        const t = await Notifications.getExpoPushTokenAsync({
-          projectId: Constants.expoConfig.extra.eas.projectId
-        });
-
-        registerPushToken(t.data);
-      }
     } catch (err) {
       Alert.alert('Error', err.response?.data?.error || 'No se pudo iniciar sesión');
-    } finally {
       setLoading(false);
+      return;
+    }
+    setLoading(false);
+
+    // Registro de push token: best-effort, nunca debe hacer fallar el login
+    // (ya se completó arriba). En Expo Go las notificaciones remotas en
+    // Android no están disponibles desde el SDK 53 — ahí directamente ni se
+    // intenta, para no tirar "runtime not ready". Fuera de Expo Go (build de
+    // desarrollo/producción) sigue funcionando igual que antes.
+    if (Constants.executionEnvironment !== ExecutionEnvironment.StoreClient) {
+      try {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status === 'granted') {
+          const t = await Notifications.getExpoPushTokenAsync({
+            projectId: Constants.expoConfig.extra.eas.projectId,
+          });
+          registerPushToken(t.data);
+        }
+      } catch {}
     }
   }
 

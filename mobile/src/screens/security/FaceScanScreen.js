@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { useAuth } from '../../context/AuthContext';
 import { connectSocket, registerPushToken } from '../../services/socket';
@@ -62,15 +62,21 @@ export default function FaceScanScreen({ navigation }) {
     (async () => {
       await login(result.staff, result.token);
       connectSocket(result.token);
-      try {
-        const { status: permStatus } = await Notifications.requestPermissionsAsync();
-        if (permStatus === 'granted') {
-          const t = await Notifications.getExpoPushTokenAsync({
-            projectId: Constants.expoConfig?.extra?.eas?.projectId,
-          });
-          registerPushToken(t.data);
-        }
-      } catch {}
+      // En Expo Go, Android ya no soporta notificaciones remotas desde el
+      // SDK 53 — ni se intenta ahí (evita el error nativo "runtime not
+      // ready", que puede no ser un throw JS común atrapable por el catch
+      // de abajo). Fuera de Expo Go sigue igual que antes.
+      if (Constants.executionEnvironment !== ExecutionEnvironment.StoreClient) {
+        try {
+          const { status: permStatus } = await Notifications.requestPermissionsAsync();
+          if (permStatus === 'granted') {
+            const t = await Notifications.getExpoPushTokenAsync({
+              projectId: Constants.expoConfig?.extra?.eas?.projectId,
+            });
+            registerPushToken(t.data);
+          }
+        } catch {}
+      }
     })();
   }, [result]);
 

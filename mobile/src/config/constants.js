@@ -1,4 +1,11 @@
-const API_BASE_URL = 'http://192.168.100.10:3000';
+// IP LAN de la PC donde corre el backend en desarrollo — tiene que
+// coincidir con la IP Wi-Fi real de esa PC (ver `ipconfig`). Estaba
+// apuntando a una IP vieja (192.168.100.10, otra subred) que ya no
+// corresponde a esta red; detectado durante el diagnóstico de Expo Go y
+// actualizado a la IP Wi-Fi actual (192.168.220.89) — sin esto, aunque
+// Expo Go cargue el bundle correctamente, la app no podría hablar con el
+// backend (login, todo el resto de la API, y el socket).
+const API_BASE_URL = 'http://192.168.220.89:3000';
 
 export const API_URL = `${API_BASE_URL}/api`;
 export const SOCKET_URL = API_BASE_URL;

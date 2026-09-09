@@ -1,0 +1,27 @@
+# Artefactos generados de Gradle/Android — NUNCA deben commitearse ni
+# subirse a EAS Build: contienen rutas absolutas de la máquina donde se
+# generaron (ej. C:\seguridad\mobile\...) que rompen el build en el
+# servidor Linux de EAS. Descubierto en el primer intento de build: el
+# archivo cacheado android/build/generated/autolinking/autolinking.json
+# tenía paths de Windows hardcodeados, subidos tal cual porque no existía
+# este .gitignore.
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/app/.cxx/
+
+# iOS (si en algún momento se agrega la carpeta nativa)
+ios/build/
+ios/Pods/
+
+# Expo
+.expo/
+
+# Node
+node_modules/
+
+# Env locales (además del .gitignore raíz, por las dudas)
+.env
+.env.*
+!.env.example

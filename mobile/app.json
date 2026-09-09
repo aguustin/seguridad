@@ -1,16 +1,11 @@
 {
   "expo": {
     "name": "Seguridad Barrios",
-    "slug": "seguridad-barrios",
+    "slug": "securityn",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1a1a2e"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -21,7 +16,9 @@
         "NSCameraUsageDescription": "Seguridad Barrios necesita la cámara para reconocimiento facial",
         "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para el seguimiento de seguridad.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Necesitamos tu ubicación en segundo plano para el seguimiento continuo de guardias en turno.",
-        "UIBackgroundModes": ["location"]
+        "UIBackgroundModes": [
+          "location"
+        ]
       }
     },
     "android": {
@@ -48,32 +45,40 @@
       ]
     },
     "plugins": [
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "Necesitamos tu ubicación en segundo plano para el seguimiento continuo de guardias en turno.",
-          "isAndroidBackgroundLocationEnabled": true,
-          "isAndroidForegroundServiceEnabled": true
-        }
-      ],
-      [
-        "react-native-vision-camera",
-        {
-          "cameraPermissionText": "Seguridad Barrios necesita la cámara para reconocimiento facial"
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#c0392b",
-          "sounds": [
-            "./assets/alert.wav"
-          ]
-        }
-      ],
-      "expo-font"
-    ],
+  [
+    "expo-location",
+    {
+      "locationAlwaysAndWhenInUsePermission": "Necesitamos tu ubicación en segundo plano para el seguimiento continuo de guardias en turno.",
+      "isAndroidBackgroundLocationEnabled": true,
+      "isAndroidForegroundServiceEnabled": true
+    }
+  ],
+  [
+    "react-native-vision-camera",
+    {
+      "cameraPermissionText": "Seguridad Barrios necesita la cámara para reconocimiento facial"
+    }
+  ],
+  [
+    "expo-notifications",
+    {
+      "icon": "./assets/notification-icon.png",
+      "color": "#c0392b",
+      "sounds": [
+        "./assets/alert.wav"
+      ]
+    }
+  ],
+  "expo-font",
+  [
+    "expo-splash-screen",
+    {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a1a2e"
+    }
+  ]
+],
     "extra": {
       "eas": {
         "projectId": "5319b878-930c-4e2c-9a3b-8babde115886"

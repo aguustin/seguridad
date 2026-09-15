@@ -39,17 +39,16 @@ export default function RegisterClientScreen({ navigation }) {
       return Alert.alert('Error', 'Completá todos los campos obligatorios');
     }
 
-    const formData = new FormData();
-    Object.entries(form).forEach(([k, v]) => { if (v) formData.append(k, v); });
-    if (photo) {
-      const filename = photo.uri.split('/').pop();
-      const ext = filename.split('.').pop() || 'jpg';
-      formData.append('profilePhoto', { uri: photo.uri, name: filename, type: `image/${ext}` });
-    }
+    const fields = {};
+    Object.entries(form).forEach(([k, v]) => { if (v) fields[k] = v; });
 
     setLoading(true);
     try {
-      await registerClient(formData);
+      // registerClient sube la foto vía FileSystem.uploadAsync (ver
+      // comentario en services/api.js) en vez de fetch+FormData — ese
+      // camino tira "Unsupported FormDataPart implementation" en una
+      // Development Build nativa (RN 0.86 / New Architecture).
+      await registerClient(fields, photo?.uri, photo?.mimeType);
       Alert.alert('Cliente registrado', `${firstName} ${lastName} fue registrado correctamente.`);
       navigation.goBack();
     } catch (err) {
@@ -62,7 +61,7 @@ export default function RegisterClientScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: COLORS.primaryDark }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Registrar Cliente</Text>

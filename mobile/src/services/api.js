@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as FileSystem from 'expo-file-system/legacy';
 import { API_URL } from '../config/constants';
 
 export const api = axios.create({
@@ -7,35 +8,42 @@ export const api = axios.create({
 });
 
 // ── Multipart upload helper ────────────────────────────────────────────────
-// axios + React Native FormData tiene un bug conocido: el Content-Type queda
-// sin boundary y multer cuelga esperando parsear el body → "Network Error".
-// La solución confiable es usar fetch nativo de React Native para uploads.
-async function multipartPost(path, formData, timeoutMs = 30000) {
-  const headers = { 'Content-Type': 'multipart/form-data' };
+// Antes esto se hacía con fetch nativo + FormData (pasando un objeto
+// {uri, name, type} como "archivo"). En una Development Build nativa sobre
+// RN 0.86 (New Architecture) ese objeto no siempre matchea la forma que
+// espera el bridge para armar el body multipart, y tira
+// "Unsupported FormDataPart implementation" — confirmado con logs reales al
+// registrar un guardia (falla justo en el fetch() de la subida de foto).
+// Pasaba desapercibido en Expo Go porque corre con otro runtime/versión.
+//
+// FileSystem.uploadAsync (expo-file-system/legacy) hace la subida
+// multipart de forma nativa sin pasar por FormData/fetch en absoluto — es
+// el mecanismo estable y mantenido por Expo para este caso, no un parche.
+async function multipartUpload(path, fileUri, fields, { fieldName = 'profilePhoto', mimeType = 'image/jpeg' } = {}) {
+  const headers = {};
 
   // Incluir token de auth si está disponible en el interceptor de axios
   const token = api.defaults.headers.common['Authorization'];
   if (token) headers['Authorization'] = token;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const result = await FileSystem.uploadAsync(`${API_URL}${path}`, fileUri, {
+    httpMethod: 'POST',
+    uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+    fieldName,
+    mimeType,
+    parameters: fields, // ojo: todos los valores tienen que ser string
+    headers,
+  });
 
-  let res;
+  let json;
   try {
-    res = await fetch(`${API_URL}${path}`, {
-      method: 'POST',
-      headers,
-      body: formData,
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
+    json = JSON.parse(result.body);
+  } catch {
+    json = {};
   }
-
-  const json = await res.json();
-  if (!res.ok) {
-    const err = new Error(json.error || `Error ${res.status}`);
-    err.response = { data: json, status: res.status };
+  if (result.status < 200 || result.status >= 300) {
+    const err = new Error(json.error || `Error ${result.status}`);
+    err.response = { data: json, status: result.status };
     throw err;
   }
   return { data: json };
@@ -55,11 +63,12 @@ export const clientLogin = (username, password) =>
 export const changePassword = (currentPassword, newPassword) =>
   api.post('/auth/change-password', { currentPassword, newPassword });
 
-// Timeout más largo que el resto: contempla el cold-start del backend en
-// Render Free (puede tardar ~30-50s en "despertar") + el tiempo de
-// inferencia de face-api.
-export const faceScan = (formData) =>
-  multipartPost('/auth/security/face-scan', formData, 45000);
+// fileUri: URI local de la foto capturada. FileSystem.uploadAsync no tiene
+// timeout propio (a diferencia del fetch anterior) — el cold-start del
+// backend en Render Free (~30-50s) + inferencia de face-api quedan
+// contenidos por el timeout normal del sistema operativo para la conexión.
+export const faceScan = (fileUri) =>
+  multipartUpload('/auth/security/face-scan', fileUri, {}, { fieldName: 'faceImage', mimeType: 'image/jpeg' });
 
 // ── Admin - Barrios ────────────────────────────────────────────────────────
 export const getNeighborhoods = () => api.get('/admin/neighborhoods');
@@ -69,8 +78,8 @@ export const updateNeighborhood = (id, data) => api.put(`/admin/neighborhoods/${
 // ── Admin - Guardias ───────────────────────────────────────────────────────
 // Alta de guardias: antes era pública (auth/security/register), ahora
 // requiere admin autenticado.
-export const createSecurityStaff = (formData) =>
-  multipartPost('/admin/security', formData);
+export const createSecurityStaff = (fields, fileUri, mimeType) =>
+  multipartUpload('/admin/security', fileUri, fields, { fieldName: 'profilePhoto', mimeType });
 export const getSecurityStaff = (neighborhoodId) =>
   api.get('/admin/security', { params: { neighborhoodId } });
 export const getSecurityProfile = (id) => api.get(`/admin/security/${id}`);
@@ -91,8 +100,14 @@ export const getAlerts = () => api.get('/admin/alerts');
 export const resolveAlert = (id) => api.patch(`/admin/alerts/${id}/resolve`);
 
 // ── Admin - Clientes ───────────────────────────────────────────────────────
-export const registerClient = (formData) =>
-  multipartPost('/admin/clients', formData);
+// La foto es opcional acá (a diferencia de guardias). multer solo intercepta
+// requests multipart/form-data — con JSON simple pasa de largo y usa el
+// req.body que ya parseó express.json() (ver backend/src/app.js), así que
+// alcanza con un POST normal cuando no hay foto.
+export const registerClient = (fields, fileUri, mimeType) =>
+  fileUri
+    ? multipartUpload('/admin/clients', fileUri, fields, { fieldName: 'profilePhoto', mimeType })
+    : api.post('/admin/clients', fields);
 export const getClients = (neighborhoodId) =>
   api.get('/admin/clients', { params: { neighborhoodId } });
 export const updateClient = (id, data) => api.put(`/admin/clients/${id}`, data);

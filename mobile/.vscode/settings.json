@@ -1,0 +1,13 @@
+{
+  "gradle.autoDetect": "off",
+  "gradle.nestedProjects": false,
+  "java.import.gradle.enabled": false,
+  "java.import.exclusions": [
+    "**/android/**",
+    "**/node_modules/**"
+  ],
+  "files.watcherExclude": {
+    "**/android/**": true,
+    "**/node_modules/**": true
+  }
+}

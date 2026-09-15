@@ -203,7 +203,7 @@ export default function ScannerScreen() {
       <Modal visible={exitModalVisible} transparent animationType="fade" onRequestClose={closeExitModal}>
         <KeyboardAvoidingView
           style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Salir del modo escáner</Text>

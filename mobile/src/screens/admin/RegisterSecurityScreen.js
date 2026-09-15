@@ -70,21 +70,24 @@ export default function RegisterSecurityScreen({ navigation }) {
   async function handleRegister() {
     const { neighborhoodId, shiftStart, shiftEnd, paymentDay, salary } = form;
 
-    const formData = new FormData();
-    formData.append('firstName',      form.firstName.trim());
-    formData.append('lastName',       form.lastName.trim());
-    formData.append('documentNumber', form.documentNumber.trim());
-    formData.append('age',            form.age);
+    const fields = {
+      firstName:      form.firstName.trim(),
+      lastName:       form.lastName.trim(),
+      documentNumber: form.documentNumber.trim(),
+      age:            form.age,
+    };
 
-    const filename = photo.uri.split('/').pop();
-    const ext = filename.split('.').pop() || 'jpg';
-    formData.append('profilePhoto', { uri: photo.uri, name: filename, type: `image/${ext}` });
+    // mimeType de photo.mimeType si expo-image-picker lo informó (confiable);
+    // si no, se lo dejamos inferir a FileSystem.uploadAsync por extensión.
+    const mimeType = photo.mimeType || undefined;
 
     setLoading(true);
+    let debugStep = 'createSecurityStaff (subida de foto)';
     try {
-      const { data } = await createSecurityStaff(formData);
+      const { data } = await createSecurityStaff(fields, photo.uri, mimeType);
 
       if (neighborhoodId || shiftStart || salary || form.contact) {
+        debugStep = 'updateSecurityStaff (turno/asignación)';
         const updates = {};
         if (neighborhoodId)  updates.neighborhoodId = neighborhoodId;
         if (shiftStart)      updates.shiftStart     = shiftStart;
@@ -101,7 +104,19 @@ export default function RegisterSecurityScreen({ navigation }) {
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (err) {
-      Alert.alert('Error', err.response?.data?.error || err.message);
+      // DEBUG temporal — sacar una vez identificado el origen exacto del
+      // "Unsupported formdatapart implementation". Muestra más contexto del
+      // que da err.message solo (código nativo, si lo hay, y en qué paso
+      // ocurrió: subida de foto vs. actualización de asignación/turno).
+      // Loguear campos como texto plano — pasar el objeto directo hace que
+      // el LogBox de RN lo formatee como stack trace y se pierde el mensaje.
+      console.error('[RegisterSecurityScreen] paso: ' + debugStep);
+      console.error('[RegisterSecurityScreen] message: ' + String(err.message));
+      console.error('[RegisterSecurityScreen] name: ' + String(err.name));
+      console.error('[RegisterSecurityScreen] code: ' + String(err.code));
+      console.error('[RegisterSecurityScreen] response: ' + JSON.stringify(err.response?.data));
+      const debugInfo = `\n\n[debug] paso: ${debugStep}\n${err.name || '?'} / code=${err.code || '?'}`;
+      Alert.alert('Error', (err.response?.data?.error || err.message) + debugInfo);
     } finally {
       setLoading(false);
     }
@@ -116,7 +131,7 @@ export default function RegisterSecurityScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: COLORS.primaryDark }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.content}>
         {/* Indicador de pasos */}

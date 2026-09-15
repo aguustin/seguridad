@@ -44,6 +44,10 @@ export default function EditSecurityScreen({ navigation, route }) {
         age:        form.age        ? parseInt(form.age)         : undefined,
         paymentDay: form.paymentDay ? parseInt(form.paymentDay)  : undefined,
         salary:     form.salary     ? parseFloat(form.salary)    : undefined,
+        // neighborhoodId es UUID en la base — mandar '' (lo que queda al
+        // deseleccionar el barrio) rompe con "invalid input syntax for
+        // type uuid" en vez de simplemente limpiar la asignación.
+        neighborhoodId: form.neighborhoodId || null,
       };
       await updateSecurityStaff(staff.id, payload);
       Alert.alert('Guardado', 'Datos actualizados correctamente');
@@ -58,7 +62,7 @@ export default function EditSecurityScreen({ navigation, route }) {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: COLORS.primaryDark }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Editar guardia</Text>

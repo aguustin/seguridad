@@ -50,7 +50,7 @@ export default function RegisterAdminScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: COLORS.primaryDark }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Nuevo administrador</Text>

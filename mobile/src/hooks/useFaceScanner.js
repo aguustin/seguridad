@@ -78,10 +78,12 @@ export function useFaceScanner() {
       const photo = await cameraRef.current.takePhoto({ flash: 'off' });
       const uri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
 
-      const formData = new FormData();
-      formData.append('faceImage', { uri, name: 'face.jpg', type: 'image/jpeg' });
-
-      const { data } = await faceScan(formData);
+      // faceScan sube el archivo vía FileSystem.uploadAsync, no
+      // fetch+FormData (ver comentario en services/api.js) — el patrón
+      // {uri, name, type} pasado a FormData.append tira
+      // "Unsupported FormDataPart implementation" en una Development Build
+      // nativa (RN 0.86 / New Architecture); no fallaba en Expo Go.
+      const { data } = await faceScan(uri);
       if (!mountedRef.current) return;
       setResult({ ok: true, ...data });
     } catch (err) {

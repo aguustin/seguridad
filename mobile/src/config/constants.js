@@ -1,11 +1,21 @@
-// IP LAN de la PC donde corre el backend en desarrollo — tiene que
-// coincidir con la IP Wi-Fi real de esa PC (ver `ipconfig`). Estaba
-// apuntando a una IP vieja (192.168.100.10, otra subred) que ya no
-// corresponde a esta red; detectado durante el diagnóstico de Expo Go y
-// actualizado a la IP Wi-Fi actual (192.168.220.89) — sin esto, aunque
-// Expo Go cargue el bundle correctamente, la app no podría hablar con el
-// backend (login, todo el resto de la API, y el socket).
-const API_BASE_URL = 'http://192.168.220.89:3000';
+// TEMPORAL — túnel de ngrok al backend (puerto 3000), NO la IP LAN.
+// Se detectó que el teléfono de prueba no tiene ninguna conectividad LAN
+// con esta PC (confirmado probando los puertos 3000/8081/9000 directo
+// desde el navegador del celular: ninguno responde), aunque sí puede
+// conectarse al bundler de Metro a través del túnel propio de Expo
+// (`--tunnel`, dominio exp.direct). Ese túnel de Expo solo expone Metro,
+// no el backend — por eso hace falta este segundo túnel aparte.
+//
+// Esta URL es efímera: cambia cada vez que se reinicia el túnel de ngrok
+// (`ngrok http 3000`). Si el login empieza a fallar de nuevo, lo más
+// probable es que el túnel se haya reiniciado — pedir la URL nueva y
+// actualizar esta línea (no hace falta un nuevo build nativo, el
+// dev client recarga el JS solo).
+//
+// Cuando se resuelva la conectividad LAN real (o se pruebe por USB con
+// adb reverse), volver a usar la IP LAN de la PC (ver `ipconfig`),
+// ej: 'http://192.168.220.89:3000'.
+const API_BASE_URL = 'https://2622-190-15-214-118.ngrok-free.app';
 
 export const API_URL = `${API_BASE_URL}/api`;
 export const SOCKET_URL = API_BASE_URL;

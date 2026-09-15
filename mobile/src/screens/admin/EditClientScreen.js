@@ -45,6 +45,10 @@ export default function EditClientScreen({ navigation, route }) {
       const payload = {
         ...form,
         age: form.age ? parseInt(form.age, 10) : null,
+        // Mismo bug que en EditSecurityScreen.js: neighborhoodId es UUID en
+        // la base, mandar '' (al deseleccionar el barrio) tira "invalid
+        // input syntax for type uuid" en vez de limpiar la asignación.
+        neighborhoodId: form.neighborhoodId || null,
       };
       await updateClient(client.id, payload);
       Alert.alert('Guardado', 'Datos actualizados correctamente');
@@ -59,7 +63,7 @@ export default function EditClientScreen({ navigation, route }) {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: COLORS.primaryDark }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.header}>

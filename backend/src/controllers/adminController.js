@@ -15,6 +15,19 @@ const auditService = require('../services/auditService');
 const { getPeriodRange } = require('../utils/periodRange');
 const path = require('path');
 
+// La ruta guardada en DB tiene que quedar relativa a uploads/ (no a la raíz
+// del backend) y con '/' siempre — el cliente arma la URL como
+// `${UPLOADS_URL}/${profilePhoto}` (UPLOADS_URL ya termina en /uploads), así
+// que si acá quedara "uploads/profiles/x.jpg" se duplicaría el segmento
+// "uploads" en la URL final. Además path.relative devuelve '\' en Windows,
+// que no es un separador válido en una URL — rompía la carga de la foto
+// (404) en el dev en Windows aunque el archivo estuviera bien guardado.
+// Bug real detectado: la foto de un guardia recién registrado no cargaba.
+function relativeUploadPath(absoluteFilePath) {
+  const uploadsRoot = path.join(__dirname, '../../uploads');
+  return path.relative(uploadsRoot, absoluteFilePath).split(path.sep).join('/');
+}
+
 // ── ADMINISTRADORES ────────────────────────────────────────────────────────
 // Alta de administradores adicionales, solo accesible para un admin ya
 // autenticado (ver middleware requireAdmin en routes/admin.js). El primer
@@ -88,7 +101,7 @@ exports.createSecurityStaff = async (req, res) => {
     }
 
     const profilePhotoPath = req.file.path
-      ? path.relative(path.join(__dirname, '../../'), req.file.path)
+      ? relativeUploadPath(req.file.path)
       : null;
 
     const imageBuffer =
@@ -132,13 +145,21 @@ exports.getSecurityStaff = async (req, res) => {
     const staff = await SecurityStaff.findAll({
       where,
       include: [{ association: 'neighborhood', attributes: ['id', 'name'] }],
-      attributes: { exclude: ['faceDescriptor'] },
     });
     // Agregar flag booleano: ¿tiene descriptor facial listo?
-    const result = staff.map((s) => ({
-      ...s.toJSON(),
-      faceDescriptor: s.getDataValue('faceDescriptor') != null,
-    }));
+    // OJO: no se puede excluir 'faceDescriptor' a nivel de query y después
+    // leerlo con getDataValue() — al no haberse pedido, siempre da
+    // undefined y el flag queda en false para todos los guardias (bug
+    // real, detectado: la lista mostraba "Procesando facial..." para
+    // guardias que sí tenían el descriptor guardado). Se trae el campo
+    // completo y se lo saca del objeto recién después de armar el flag,
+    // para no exponer el descriptor crudo al cliente.
+    const result = staff.map((s) => {
+      const json = s.toJSON();
+      const hasDescriptor = s.getDataValue('faceDescriptor') != null;
+      delete json.faceDescriptor;
+      return { ...json, faceDescriptor: hasDescriptor };
+    });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -280,7 +301,7 @@ exports.registerClient = async (req, res) => {
 
     let profilePhoto = null;
     if (req.file) {
-      profilePhoto = path.relative(path.join(__dirname, '../../'), req.file.path);
+      profilePhoto = relativeUploadPath(req.file.path);
     }
 
     const client = await Client.create({

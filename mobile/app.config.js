@@ -102,6 +102,10 @@ module.exports = {
     ],
     extra: {
       eas: {
+        // OJO: este es el ID del PROYECTO en EAS (fijo), no el de un build
+        // puntual — se confundieron en algún momento y quedó pisado con un
+        // build ID, lo que rompe cualquier `eas build`/`eas update` futuro
+        // con mismatch de proyecto. Verificado con `eas project:info`.
         projectId: '5319b878-930c-4e2c-9a3b-8babde115886',
       },
     },

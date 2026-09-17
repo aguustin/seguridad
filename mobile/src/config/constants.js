@@ -15,7 +15,7 @@
 // Cuando se resuelva la conectividad LAN real (o se pruebe por USB con
 // adb reverse), volver a usar la IP LAN de la PC (ver `ipconfig`),
 // ej: 'http://192.168.220.89:3000'.
-const API_BASE_URL = 'https://2622-190-15-214-118.ngrok-free.app';
+const API_BASE_URL = 'https://c6b5-190-15-214-118.ngrok-free.app';
 
 export const API_URL = `${API_BASE_URL}/api`;
 export const SOCKET_URL = API_BASE_URL;

@@ -117,7 +117,7 @@ En la app del **dev client** instalada (no Expo Go):
 
 1. Docker Desktop abierto → `docker start seguridad-postgres`
 2. `cd backend && npm start` → esperar "Base de datos conectada"
-3. `./ngrok.exe http 3000` → copiar URL
+3. `./ngrok.exe http 3000./ngrok.exe http 3000` → copiar URL
 4. Pegar esa URL en `mobile/src/config/constants.js` (`API_BASE_URL`)
 5. `cd mobile && npx expo start --dev-client --tunnel` → reintentar si falla
 6. Copiar la URL `exp.direct` del túnel de Metro (log o `:4040/api/tunnels`)

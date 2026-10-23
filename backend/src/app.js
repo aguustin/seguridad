@@ -1,15 +1,22 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const path = require('path');
 
 const app = express();
 
 // Necesario para que req.ip (usado por el rate limiter) refleje la IP real
-// del cliente cuando el server corre detrás de un proxy (Render u otro) en
+// del cliente cuando el server corre detrás de un proxy (Caddy u otro) en
 // vez de la IP del proxy para todos los requests por igual.
 app.set('trust proxy', 1);
 
+// Headers de seguridad HTTP básicos (X-Content-Type-Options,
+// X-Frame-Options, etc.). contentSecurityPolicy y crossOriginEmbedderPolicy
+// apagados: esta API no sirve HTML ni recursos cross-origin embebidos, y esa
+// CSP por defecto de helmet está pensada para eso, no para una API JSON +
+// archivos estáticos de /uploads consumidos por una app nativa.
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

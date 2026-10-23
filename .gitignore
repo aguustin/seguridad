@@ -5,3 +5,7 @@ node_modules/
 .env.*
 !.env.example
 .expo/
+
+# Backups locales generados por scripts/backup.sh — nunca deben subirse al
+# repo (contienen datos reales, incluidas fotos y datos personales).
+backups/

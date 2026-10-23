@@ -1,21 +1,19 @@
-// TEMPORAL — túnel de ngrok al backend (puerto 3000), NO la IP LAN.
-// Se detectó que el teléfono de prueba no tiene ninguna conectividad LAN
-// con esta PC (confirmado probando los puertos 3000/8081/9000 directo
-// desde el navegador del celular: ninguno responde), aunque sí puede
-// conectarse al bundler de Metro a través del túnel propio de Expo
-// (`--tunnel`, dominio exp.direct). Ese túnel de Expo solo expone Metro,
-// no el backend — por eso hace falta este segundo túnel aparte.
-//
-// Esta URL es efímera: cambia cada vez que se reinicia el túnel de ngrok
-// (`ngrok http 3000`). Si el login empieza a fallar de nuevo, lo más
-// probable es que el túnel se haya reiniciado — pedir la URL nueva y
-// actualizar esta línea (no hace falta un nuevo build nativo, el
-// dev client recarga el JS solo).
-//
-// Cuando se resuelva la conectividad LAN real (o se pruebe por USB con
-// adb reverse), volver a usar la IP LAN de la PC (ver `ipconfig`),
-// ej: 'http://192.168.220.89:3000'.
-const API_BASE_URL = 'https://c6b5-190-15-214-118.ngrok-free.app';
+// URL del backend — viene de EXPO_PUBLIC_API_URL (Expo inyecta cualquier
+// variable con el prefijo EXPO_PUBLIC_ directamente en el bundle del
+// cliente). Se define:
+//   - En local: en mobile/.env.local (gitignoreado), junto a GOOGLE_MAPS_API.
+//     Hoy en desarrollo esto apunta a un túnel de ngrok efímero (ver
+//     DEV_SETUP.md) porque el teléfono de prueba no tiene conectividad LAN
+//     con la PC — la URL cambia cada vez que se reinicia el túnel, hay que
+//     actualizar .env.local (NO este archivo) y recargar la app.
+//   - En producción/preview: como variable de entorno del proyecto en EAS
+//     (`eas env:create production --name EXPO_PUBLIC_API_URL --value
+//     https://api.tudominio.com --visibility plaintext`), apuntando al
+//     dominio real del servidor.
+// El fallback a localhost solo sirve para que el bundle no rompa si a
+// alguien se le olvida configurar la variable — no es utilizable desde un
+// dispositivo físico.
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 export const API_URL = `${API_BASE_URL}/api`;
 export const SOCKET_URL = API_BASE_URL;

@@ -30,8 +30,17 @@ async function start() {
     await sequelize.authenticate();
     console.log('✅ Base de datos conectada');
 
-    await sequelize.sync({ alter: true }); // agrega columnas nuevas sin borrar datos
-    console.log('✅ Modelos sincronizados');
+    // sync({ alter: true }) inspecciona y ajusta cada tabla (incluidas sus
+    // foreign keys) en cada arranque — perfecto para desarrollo, pero
+    // arriesgado en producción con datos reales (puede tardar, trabarse, o
+    // tocar una FK que un admin cambió a mano). En producción se corre a
+    // demanda con `npm run db:sync`, no en cada reinicio del proceso.
+    if (process.env.DB_AUTO_SYNC !== 'false') {
+      await sequelize.sync({ alter: true });
+      console.log('✅ Modelos sincronizados');
+    } else {
+      console.log('⏭️  DB_AUTO_SYNC=false — se omite sync automático (correr `npm run db:sync` manualmente si hace falta)');
+    }
 
     // Limpiar estado de conexión del arranque anterior
     // (si el servidor crasheó, los guards pueden haber quedado isOnDuty: true)

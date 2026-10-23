@@ -1,0 +1,80 @@
+# Stack de producción: Postgres + backend + Caddy (proxy + TLS automático).
+# Requiere un archivo `.env` en esta misma carpeta (copiar de `.env.example`)
+# con los valores reales — ver PRODUCTION_DEPLOY.md para la guía completa.
+#
+# Uso:
+#   docker compose up -d --build
+#   docker compose logs -f backend
+#   docker compose down            # no borra los volúmenes (datos persisten)
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [internal]
+    # Sin 'ports': solo el backend le habla, dentro de la red interna —
+    # no hace falta (ni conviene) exponerlo al host.
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # Postgres corre en la misma red interna de Docker, no hace falta SSL
+      # acá — si en algún momento se migra a un Postgres administrado
+      # externo, cambiar a DB_SSL=true (y usar DATABASE_URL si lo pide así).
+      DB_SSL: "false"
+      # No correr sync({alter:true}) en cada reinicio del contenedor (ver
+      # comentario en server.js) — se corre a demanda con
+      # `docker compose exec backend npm run db:sync`.
+      DB_AUTO_SYNC: "false"
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 7d
+      FACE_MATCH_THRESHOLD: 0.5
+      # Crítico: sin esto el servidor corre en UTC y los check-ins de
+      # guardias salen calculados con horas de diferencia respecto al
+      # horario de turno real (ver authController.js — usa la hora local
+      # del proceso para comparar contra "shiftStart").
+      TZ: America/Argentina/Buenos_Aires
+    depends_on: [postgres]
+    volumes:
+      - uploads_data:/app/uploads
+    networks: [internal]
+    # Tampoco expone 'ports' al host — Caddy es el único punto de entrada
+    # público, todo lo demás vive en la red interna de Docker.
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [backend]
+    networks: [internal]
+
+networks:
+  internal:
+
+volumes:
+  postgres_data:
+  uploads_data:
+  caddy_data:
+  caddy_config:

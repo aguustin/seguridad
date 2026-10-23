@@ -96,16 +96,18 @@ curl -s http://127.0.0.1:4040/api/tunnels
 
 ## 5. Apuntar la app al túnel del backend
 
-Editar `mobile/src/config/constants.js`, la constante `API_BASE_URL`, con
-la URL de ngrok del paso 3 (con `https://`, sin barra final):
+Editar `mobile/.env.local` (ya NO se edita `constants.js` directamente —
+la URL sale de la variable `EXPO_PUBLIC_API_URL`), con la URL de ngrok del
+paso 3 (con `https://`, sin barra final):
 
-```js
-const API_BASE_URL = 'https://xxxx-xxx-xx-xxx-xxx.ngrok-free.app';
+```
+EXPO_PUBLIC_API_URL=https://xxxx-xxx-xx-xxx-xxx.ngrok-free.app
 ```
 
 **No hace falta un nuevo build nativo** — el dev client recarga el JS
 desde Metro solo. Si no se refleja el cambio, recargar manualmente
-(shake del teléfono → "Reload").
+(shake del teléfono → "Reload") o reiniciar `expo start` para que relea
+`.env.local`.
 
 ## 6. Conectar el teléfono
 
@@ -117,8 +119,8 @@ En la app del **dev client** instalada (no Expo Go):
 
 1. Docker Desktop abierto → `docker start seguridad-postgres`
 2. `cd backend && npm start` → esperar "Base de datos conectada"
-3. `./ngrok.exe http 3000./ngrok.exe http 3000` → copiar URL
-4. Pegar esa URL en `mobile/src/config/constants.js` (`API_BASE_URL`)
+3. `./ngrok.exe http 3000` → copiar URL
+4. Pegar esa URL en `mobile/.env.local` (`EXPO_PUBLIC_API_URL`)
 5. `cd mobile && npx expo start --dev-client --tunnel` → reintentar si falla
 6. Copiar la URL `exp.direct` del túnel de Metro (log o `:4040/api/tunnels`)
 7. Dev client en el teléfono → "Enter URL manually" con esa URL

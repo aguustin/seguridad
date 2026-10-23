@@ -1,0 +1,8 @@
+# Caddy pide y renueva el certificado TLS solo (Let's Encrypt) apenas el
+# dominio en DOMAIN apunta a la IP de este servidor y los puertos 80/443
+# están abiertos — no hace falta configurar nada de certificados a mano.
+# Socket.IO (WebSockets) funciona sin configuración extra: Caddy detecta el
+# header de upgrade y lo proxea igual que el resto del tráfico HTTP.
+{$DOMAIN} {
+	reverse_proxy backend:3000
+}

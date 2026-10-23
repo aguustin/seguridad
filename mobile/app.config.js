@@ -34,8 +34,6 @@ module.exports = {
       package: 'com.seguridad.barrios',
       permissions: [
         'CAMERA',
-        'READ_EXTERNAL_STORAGE',
-        'WRITE_EXTERNAL_STORAGE',
         'ACCESS_FINE_LOCATION',
         'ACCESS_COARSE_LOCATION',
         'ACCESS_BACKGROUND_LOCATION',
@@ -44,7 +42,6 @@ module.exports = {
         'RECEIVE_BOOT_COMPLETED',
         'VIBRATE',
         'android.permission.CAMERA',
-        'android.permission.RECORD_AUDIO',
         'android.permission.ACCESS_COARSE_LOCATION',
         'android.permission.ACCESS_FINE_LOCATION',
       ],
@@ -72,6 +69,19 @@ module.exports = {
         'react-native-vision-camera',
         {
           cameraPermissionText: 'Seguridad Barrios necesita la cámara para reconocimiento facial',
+        },
+      ],
+      // Sin este plugin explícito, expo-image-picker agrega
+      // RECORD_AUDIO al manifest por defecto (por si se usara para
+      // grabar video con audio) aunque esta app solo elige fotos de la
+      // galería/cámara — nunca grabamos video ni audio con image-picker.
+      // Detectado al auditar los permisos para la Play Store: Google
+      // puede rechazar la app si declara un permiso "sensible" sin un
+      // uso real que lo justifique.
+      [
+        'expo-image-picker',
+        {
+          microphonePermission: false,
         },
       ],
       [
